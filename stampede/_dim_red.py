@@ -95,7 +95,10 @@ def dim_red(
     adata.uns[uns_key] = {
         "idf": idf,
         "explained_variance_ratio": svd.explained_variance_ratio_[1:],
+        "components": svd.components_[1:],
     }
+    if use_genes is not None:
+        adata.uns[uns_key]["var_names"] = adata_sub.var_names.to_list()
 
 
 def plot_scree(adata: ad.AnnData, obsm_key: str = None) -> tuple[Figure, Axes]:

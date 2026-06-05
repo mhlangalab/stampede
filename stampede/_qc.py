@@ -37,7 +37,7 @@ def slide_qc(
           The value dict must contain keys "exprmat" and "metadata", with should map to
           matching respective files
         add_cols: additional columns to visualize (e.g. conditions)
-        data_dir: optional filepath prefix (default: "")
+        data_dir: optional filepath prefix
 
     Returns:
         Nothing, updates adata.uns and adata.obs
@@ -192,7 +192,7 @@ def gene_qc(
         adata.var["above_noise"] = adata.var["mean_Transcript"] > noise_threshold
 
 
-def plot_noise_threshold(adata, bins=50, **kwargs):
+def plot_noise_threshold(adata: ad.AnnData, bins: int = 50, **kwargs):
     fig, ax = plot_column_distribution(
         adata,
         "mean_Transcript",
@@ -487,7 +487,7 @@ def plot_slide_qc(
 #     return fig, axs
 
 
-def plot_2d_correlations(
+def plot_correlations(
     adata: ad.AnnData,
     xcolumn: str,
     ycolumn: str,
@@ -658,9 +658,9 @@ def plot_avg_per_pixel(
         adata: an adata object
         column: a column in adata.obs with numeric values
         fill_cell_area: distribute the column value over all pixels covered by the cell,
-         assuming square cells (default: False)
+         assuming square cells
         normalize_cell_area: if fill_cell_area is True, normalize the column value
-         over the cell area (default: True)
+         over the cell area
         log1p: normalize the final values per pixel?
         cmap: colormap (default: "gist_rainbow")
         background_color: color for pixels with 0 values (default: "black")
@@ -1024,8 +1024,8 @@ def plot_ncell_per_condition(
 def plot_value_distribution(
     adata: ad.AnnData,
     layer: str = None,
-    min_quantile: float = 0.0,
-    max_quantile: float = 0.99,
+    min_quantile: float = 0.00,
+    max_quantile: float = 0.95,
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
 ) -> tuple[Figure, list[Axes]]:
@@ -1098,8 +1098,8 @@ def plot_column_distribution(
     adata: ad.AnnData,
     column: str,
     axis: int = None,
-    min_quantile: float = 0.0,
-    max_quantile: float = 0.99,
+    min_quantile: float = 0.00,
+    max_quantile: float = 0.95,
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
 ) -> tuple[Figure, Axes]:
@@ -1111,8 +1111,8 @@ def plot_column_distribution(
         adata: an adata object.
         column: a column in either adata.obs or adata.var
         axis: specify if the column name is present in both obs (0) and var (1).
-        min_quantile: lowest quantile of values to plot (default: 0.00)
-        max_quantile: highest quantile of values to plot (default: 0.99)
+        min_quantile: lowest quantile of values to plot
+        max_quantile: highest quantile of values to plot
         subplot_kwargs: kwargs passed to plt.subplots
         plot_kwargs: kwargs passed to the main plotting function
 
