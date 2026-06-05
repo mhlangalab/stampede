@@ -24,7 +24,7 @@ def paired_binomial_glm(
     random_state: int = 42,
 ) -> pd.DataFrame | None:
     """
-    Runs paired donor-level binomial GLM:
+    Runs paired sample-level binomial GLM:
         gene_detection_rate ~ condition + covariate(s)
 
     Args:
