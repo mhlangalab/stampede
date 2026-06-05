@@ -141,7 +141,7 @@ def plot_dim_red(
     obsm_key: str = "X_svd",
     cmap: ColorType = "tab10",
     n_dims: int | tuple = 6,
-    subset_size: int = 1_000,
+    subset_size: int = 2_000,
     random_state: int = 42,
 ) -> list[tuple[Figure, Axes]]:
     """
@@ -176,12 +176,21 @@ def plot_dim_red(
     ret = []
     for c in columns:
         df = data
-        if subset_size:
-            n = subset_size * len(data[c].unique())
-            if len(data) > n:
+        if subset_size and len(data[c]) > subset_size * len(data[c].unique()):
+            try:
                 df = data.groupby(c, observed=False).sample(
-                    n=n, random_state=random_state
+                    n=subset_size, random_state=random_state
                 )
+            except ValueError as e:
+                size_error = (
+                    "Cannot take a larger sample than population when 'replace=False'"
+                )
+                if str(e) == size_error:
+                    raise ValueError(
+                        f"{size_error}. Set '{subset_size=}' to False or a lower value"
+                    )
+                raise e
+
         levels, categories = pd.factorize(df[c])
         colors = [cmap.colors[i] for i in levels]  # noqa
 

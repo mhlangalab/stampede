@@ -1,6 +1,6 @@
 # STAMPede - STAMP data Exploration and Differential Expression
 
-[![Documentation](https://github.com/siebrenf/stampede/actions/workflows/docs.yml/badge.svg)](https://github.com/siebrenf/stampede/actions/workflows/docs.yml)
+[![Documentation](https://github.com/mhlangalab/stampede/actions/workflows/docs.yml/badge.svg)](https://github.com/mhlangalab/stampede/actions/workflows/docs.yml)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Process & analyse [STAMP data](https://doi.org/10.1016/j.cell.2025.05.027) with ease!
@@ -29,7 +29,7 @@ STAMPede is built to handle huge datasets with shallow depth, using syntax famil
 
 Clone the repo
 ```bash
-git clone https://github.com/siebrenf/stampede.git
+git clone https://github.com/mhlangalab/stampede.git
 ```
 
 Create a conda environment
@@ -51,7 +51,7 @@ pip install -e stampede
 
 ## Documentation
 
-Check out our [GitHub pages](https://siebrenf.github.io/stampede/index.html)!
+Check out our [GitHub pages](https://mhlangalab.github.io/stampede/index.html)!
 
 
 
