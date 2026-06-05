@@ -26,7 +26,7 @@ def filter_genes(
         ntranscript_max: maximum number of transcripts the gene must have.
         filter_columns: a list of additional columns to filter by.
          Columns by (convertible to) boolean, where False values are removed.
-        verbose: provide written feedback (default: True)
+        verbose: provide written feedback
 
     Returns:
         the filtered adata object
@@ -97,7 +97,7 @@ def filter_cells(
         filter_columns: a list of additional columns to filter by.
          Columns by (convertible to) boolean, where False values are removed.
         filter_internalqc: filter by columns `qcCellsPassed` and `qcFlagsFOV`.
-        verbose: provide written feedback (default: True)
+        verbose: provide written feedback
 
     Returns:
         the filtered adata object

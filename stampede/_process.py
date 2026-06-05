@@ -15,7 +15,7 @@ def binarize(adata: ad.AnnData, verbose: bool = True) -> None:
 
     Args:
         adata: adata object
-        verbose: provide written feedback (default: True)
+        verbose: provide written feedback
 
     Returns:
         Nothing, updates adata.layers and adata.X
@@ -56,7 +56,7 @@ def knn_count_smoothing(
         use_layer: layer to use for smoothing
         layer_added: key in adata.layers for function output (default: "KNN_binary_mean")
         neighbors_key: See sc.pp.neighbors for details
-        verbose: provide written feedback (default: True)
+        verbose: provide written feedback
 
     Returns:
         Nothing, updates adata.layers and adata.X

@@ -22,7 +22,7 @@ def validate_input(
           The value dict must contain keys "exprmat" and "metadata", with should map to
           matching respective files
         samples_df: a dataframe with sample metadata
-        data_dir: optional filepath prefix (default: "")
+        data_dir: optional filepath prefix
 
     Returns:
         Nothing
@@ -83,9 +83,9 @@ def read_cosmx(
         adata_file: filepath to write the adata object to
         samples_df_columns: list of columns in samples_df to add to adata.obs (default: all)
         metadata_df_columns: list of columns in the metadata file to add to adata.obs (default: all)
-        data_dir: optional filepath prefix (default: "")
-        overwrite: overwrite existing output (default: True)
-        verbose: provide written feedback (default: True)
+        data_dir: optional filepath prefix
+        overwrite: overwrite existing output
+        verbose: provide written feedback
         **kwargs: keyword arguments passed to pd.read_csv
 
     Returns:
