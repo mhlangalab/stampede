@@ -192,7 +192,7 @@ def gene_qc(
         adata.var["above_noise"] = adata.var["mean_Transcript"] > noise_threshold
 
 
-def plot_noise_threshold(adata, bins=50, **kwargs):
+def plot_noise_threshold(adata: ad.AnnData, bins: int = 50, **kwargs):
     fig, ax = plot_column_distribution(
         adata,
         "mean_Transcript",
@@ -487,7 +487,7 @@ def plot_slide_qc(
 #     return fig, axs
 
 
-def plot_2d_correlations(
+def plot_correlations(
     adata: ad.AnnData,
     xcolumn: str,
     ycolumn: str,

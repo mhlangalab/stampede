@@ -2,9 +2,9 @@
 
 from ._dim_red import plot_dim_red as dim_red
 from ._dim_red import plot_scree as scree
-from ._qc import plot_2d_correlations as correlations
 from ._qc import plot_avg_per_pixel as avg_per_pixel
 from ._qc import plot_column_distribution as column_distribution
+from ._qc import plot_correlations as correlations
 from ._qc import plot_ncell_per_condition as ncell_per_condition
 from ._qc import plot_noise_threshold as noise_threshold
 from ._qc import plot_slide_qc as slide_qc

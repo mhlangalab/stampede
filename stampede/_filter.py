@@ -79,7 +79,7 @@ def filter_cells(
     area_min: int = 25,
     area_max: int = 100,
     filter_columns: list = None,
-    filter_internalqc=False,
+    filter_internalqc: bool = False,
     verbose: bool = True,
 ) -> ad.AnnData:
     """
