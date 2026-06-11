@@ -101,19 +101,17 @@ def dim_red(
         adata.uns[uns_key]["var_names"] = adata_sub.var_names.to_list()
 
 
-def plot_scree(adata: ad.AnnData, obsm_key: str = None) -> tuple[Figure, Axes]:
+def plot_scree(adata: ad.AnnData, obsm_key: str = "X_svd") -> tuple[Figure, Axes]:
     """
     Scree plot
 
     Args:
         adata: adata object
-        obsm_key: key in adata.obsm with dim_red output (default: "X_svd")
+        obsm_key: key in adata.obsm with dim_red output
 
     Returns:
         matplotlib figure and array of axes
     """
-    if obsm_key is None:
-        obsm_key = "X_svd"
     uns_key = obsm_key.split("_", 1)[1]
 
     evr = adata.uns[uns_key]["explained_variance_ratio"]

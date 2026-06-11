@@ -40,7 +40,7 @@ def binarize(adata: ad.AnnData, verbose: bool = True) -> None:
 
 def knn_count_smoothing(
     adata: ad.AnnData,
-    use_layer: str = "binary",
+    layer: str = "binary",
     layer_added: str = None,
     neighbors_key: str = "neighbors",
     verbose: bool = True,
@@ -53,7 +53,7 @@ def knn_count_smoothing(
 
     Args:
         adata: adata object
-        use_layer: layer to use for smoothing
+        layer: name of the adata layer to use for smoothing
         layer_added: key in adata.layers for function output (default: "KNN_binary_mean")
         neighbors_key: See sc.pp.neighbors for details
         verbose: provide written feedback
@@ -61,11 +61,11 @@ def knn_count_smoothing(
     Returns:
         Nothing, updates adata.layers and adata.X
     """
-    if use_layer not in adata.layers:
-        raise KeyError(f"{use_layer=} not found in adata.layers.")
+    if layer not in adata.layers:
+        raise KeyError(f"{layer=} not found in adata.layers.")
 
     if layer_added is None:
-        layer_added = f"KNN_{use_layer}_mean"
+        layer_added = f"KNN_{layer}_mean"
 
     if neighbors_key not in adata.uns:
         raise ValueError(
@@ -86,7 +86,7 @@ def knn_count_smoothing(
     knn = knn.multiply(1 / deg)  # coo_matrix
 
     # average gene presence across its neighborhood
-    X = adata.layers[use_layer]
+    X = adata.layers[layer]
     data = knn.dot(X)
 
     # sanity checks
@@ -103,11 +103,11 @@ def knn_count_smoothing(
 
 def pseudobulk(
     adata: ad.AnnData,
-    samples_column: str,
+    sample_column: str,
     samples: Iterable = None,
     cluster_column: str = None,
     cluster: str = None,
-    layer: str = None,
+    layer: str = "counts",
 ) -> pd.DataFrame:
     """
     Generate a pseudobulk table (genes x samples) for all samples in the sample_column
@@ -115,11 +115,11 @@ def pseudobulk(
 
     Args:
         adata: adata object
-        samples_column: column in adata.obs
+        sample_column: column in adata.obs
         samples: samples in the sample columns to use (default: all)
         cluster_column: column in adata.obs (only needed if cluster is specified)
         cluster: name of the cluster in cluster_column to aggregate to pseudobulk
-        layer: layer to aggregate (default: "counts")
+        layer: name of the adata layer to aggregate
 
     Returns:
         a dataframe with summed layer values per sample
@@ -130,14 +130,11 @@ def pseudobulk(
             raise ValueError(f"{cluster=} not found in adata.obs['{cluster_column}']")
         adata = adata[adata.obs[cluster_column] == cluster]
 
-    if layer is None:
-        layer = "counts"
-
     sample2counts = {}
     if samples is None:
-        samples = natsorted(adata.obs[samples_column].unique())
+        samples = natsorted(adata.obs[sample_column].unique())
     for sample in samples:
-        X = adata[adata.obs[samples_column] == sample].layers[layer]
+        X = adata[adata.obs[sample_column] == sample].layers[layer]
         sample2counts[sample] = X.sum(axis=0).A1
 
     pseudobulk_df = pd.DataFrame(data=sample2counts, index=adata.var_names)
@@ -145,14 +142,14 @@ def pseudobulk(
 
 
 def detection_rates(
-    adata: ad.AnnData, samples_column: str, normalize: bool = True
+    adata: ad.AnnData, sample_column: str, normalize: bool = True
 ) -> pd.DataFrame:
     """
-    Calculate gene detection rates per sample in the samples_column of adata.obs.
+    Calculate gene detection rates per sample in the sample_column of adata.obs.
 
     Args:
         adata: adata object
-        samples_column: column in adata.obs
+        sample_column: column in adata.obs
         normalize: normalize detection rates for sample quality
 
     Returns:
@@ -161,10 +158,10 @@ def detection_rates(
     # gene detection rate per sample
     columns = []
     det_rate_cols = []
-    for sample, ncells in adata.obs[samples_column].value_counts().items():
+    for sample, ncells in adata.obs[sample_column].value_counts().items():
         columns.append(sample)
         det_rates = (
-            adata[adata.obs[samples_column] == sample].layers["binary"].sum(axis=0).A
+            adata[adata.obs[sample_column] == sample].layers["binary"].sum(axis=0).A
             / ncells
         )
         det_rate_cols.append(det_rates[0, :])
