@@ -44,20 +44,20 @@ def validate_input(
             if not os.path.exists(filename):
                 raise FileNotFoundError(filename)
 
+    # a "slide" column is optional with only 1 slide
+    if len(slides) == 1 and "slide" not in samples_df.columns:
+        # print("Adding column 'slide' to the samples_df")
+        samples_df["slide"] = list(slides)[0]
+
     # validate the samples_df
     for column in config["sample_md_columns"]:
         if column not in samples_df.columns:
             raise ValueError(f"{column=} not found in samples_df")
 
     # validate overlap between the slides dictionary and the samples_df
-    n_slides = len(slides.keys())
     for slide in slides:
         if slide not in set(samples_df["slide"]):
-            if n_slides == 1:
-                samples_df["slide"] = slide
-                # print("Adding column 'slide' to the samples_df")
-            else:
-                raise ValueError(f"{slide=} not found in samples_df['slide']")
+            raise ValueError(f"{slide=} not found in samples_df['slide']")
 
 
 def read_cosmx(
@@ -270,6 +270,7 @@ def _add_metadata(obs, file_md, slide, columns=None, data_dir: str = None, **kwa
     md[index] = f"{slide}-" + md["fov"].astype(str) + "-" + md["cell_ID"].astype(str)
 
     # if both files are sorted, we can concatenate blindly
+    assert len(md[index]) == len(obs[index]), "exprMat and metadata files have different lengths!"
     assert (md[index] == obs[index]).all(), "exprMat and metadata files are not sorted!"
     obs = pd.concat(
         [obs, md.drop(columns=config.get("metadata_md_columns") + [index])], axis=1
