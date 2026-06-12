@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING
 
 import anndata as ad
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from adjustText import adjust_text
 from matplotlib import patheffects
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
+from sklearn.preprocessing import MinMaxScaler
 
 if TYPE_CHECKING:
     from pydeseq2.dds import DeseqDataSet
@@ -22,6 +24,7 @@ def pydeseq2(
     adata: ad.AnnData,
     design: str,
     contrast: list,
+    layer: str = "binary",
     inference: Inference = None,
     n_cpus: int = 16,
     return_objects: bool = False,
@@ -39,6 +42,7 @@ def pydeseq2(
          Each factor must be a column in adata.obs
         contrast:  a list of three strings in the following format:
          ['variable_of_interest', 'tested_level', 'ref_level']
+        layer: name of the adata layer where values are drawn from
         inference: pyDESeq2 inference class instance
         n_cpus: number of threads to use
         return_objects: return the DeseqDataSet, DeseqStats and the results_df.
@@ -60,26 +64,59 @@ def pydeseq2(
         dds_kwargs = {}
     if ds_kwargs is None:
         ds_kwargs = {}
-    dds = DeseqDataSet(
-        adata=adata,
-        design=design,
-        inference=inference,
-        **dds_kwargs,
-    )
-    dds.deseq2()
 
-    ds = DeseqStats(
-        dds,
-        contrast=contrast,
-        n_cpus=n_cpus,
-        **ds_kwargs,
-    )
-    ds.summary()
+    # pyDESeq2 does not work with sparse matrices
+    counts = adata.layers[layer]
+    if isinstance(counts, pd.DataFrame):
+        # dataframes
+        if len(counts.index) == len(adata.var.index) and len(counts.columns) == len(
+            adata.obs.index
+        ):
+            # must have cells for rows and genes for columns
+            counts = counts.T
+    elif "scipy.sparse." in str(type(counts)):
+        # any kind of sparse matrics
+        counts = pd.DataFrame.sparse.from_spmatrix(
+            data=counts,
+            index=adata.obs.index,
+            columns=adata.var.index,
+        )
+    else:
+        # numpy arrays/matrices
+        counts = pd.DataFrame(
+            data=counts,
+            index=adata.obs.index,
+            columns=adata.var.index,
+        )
+
+    # cannot capture the warnings due to multiprocessing
+    with warnings.catch_warnings():
+        # invalid value encountered in slogdet
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+
+        dds = DeseqDataSet(
+            counts=counts,
+            metadata=adata.obs,
+            design=design,
+            inference=inference,
+            **dds_kwargs,
+        )
+        dds.deseq2()
+
+        ds = DeseqStats(
+            dds,
+            contrast=contrast,
+            n_cpus=n_cpus,
+            **ds_kwargs,
+        )
+        ds.summary()
+
+        df = ds.results_df
 
     if return_objects:
-        return dds, ds, ds.results_df
+        return dds, ds, df
     else:
-        return ds.results_df
+        return df
 
 
 def plot_pydeseq2_volcano(
@@ -90,8 +127,8 @@ def plot_pydeseq2_volcano(
     baseMean_column: str = "baseMean",
     pval_thresh: float = 0.05,
     log2fc_thresh: float = 0.75,
-    to_label: int | list = 5,
-    colors: list = None,
+    to_label: int | list | None = 5,
+    scale_size: bool = False,
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
     text_kwargs: dict = None,
@@ -112,7 +149,7 @@ def plot_pydeseq2_volcano(
          considered significant
         to_label: If an int is passed, that number of top down and up genes will be labeled.
             If a list of gene Ids is passed, only those will be labeled
-        colors: order and colors to use
+        scale_size: scale the marker size in the plot (based on the baseMean values)
         subplot_kwargs: kwargs passed to plt.subplots
         plot_kwargs: kwargs passed to the main plotting function
         text_kwargs: kwargs passed to ax.text
@@ -126,84 +163,138 @@ def plot_pydeseq2_volcano(
         plot_kwargs = {}
     if text_kwargs is None:
         text_kwargs = {}
+    alpha = 0.33
 
     df = df.copy().reset_index(drop=False).dropna()
-    if df[pvalue_column].min() == 0:
-        df[pvalue_column][df[pvalue_column] == 0] = 1e-9
+    pval_thresh = -np.log10(pval_thresh)
+    min_value = min(1e-9, df[df[pvalue_column] > 0][pvalue_column].min() / 10)
+    df["-log10(padj)"] = -np.log10(np.clip(df[pvalue_column], min_value, None))
+    df["size"] = 100 * df[baseMean_column]
+    if scale_size:
+        scaler = MinMaxScaler(feature_range=(10, 100))
+        df["size"] = scaler.fit_transform(df["size"].values.reshape(-1, 1))
 
-    pval_thresh = -np.log10(pval_thresh)  # convert p value threshold to nlog10
-    df["nlog10"] = -np.log10(df[pvalue_column])  # make nlog10 column
-    df["sorter"] = df["nlog10"] * df[log2fc_column]  # make a column to pick top genes
-    df["logBaseMean"] = np.log1p(df[baseMean_column])  # size the dots by basemean
+    def map_genes(row):
+        l2fc, log10p = row
+        if log10p <= pval_thresh:
+            if abs(l2fc) <= log2fc_thresh:
+                return "NS"
+            else:
+                return "Log2FC"
+        else:
+            if abs(l2fc) <= log2fc_thresh:
+                return "p-value"
+            else:
+                return "p-value & Log2FC"
 
-    # make label list of top x genes up and down, or based on list input
-    if isinstance(to_label, int):
-        label_df = pd.concat(
-            (df.sort_values("sorter")[-to_label:], df.sort_values("sorter")[0:to_label])
-        )
-    else:
-        label_df = df[df[symbol_column].isin(to_label)]
-
-    # color light grey if below thresh, color picked black
-    def map_color(a):
-        zymbol, log2FoldChange, nlog10 = a
-        if zymbol in label_df[symbol_column].tolist():
-            return "picked"
-
-        if abs(log2FoldChange) < log2fc_thresh or nlog10 < pval_thresh:
-            return "not DE"
-        return "DE"
-
-    df["color"] = df[[symbol_column, log2fc_column, "nlog10"]].apply(map_color, axis=1)
-    hues = ["DE", "not DE", "picked"][: len(df.color.unique())]  # order of colors
-    if colors is None:
-        colors = [
-            "dimgrey",
-            "lightgrey",
-            "tab:blue",
-            "tab:orange",
-            "tab:green",
-            "tab:red",
-            "tab:purple",
-            "tab:brown",
-            "tab:pink",
-            "tab:olive",
-            "tab:cyan",
-        ]
-    colors = colors[: len(df.color.unique())]
+    df["cat"] = df[[log2fc_column, "-log10(padj)"]].apply(map_genes, axis=1)
+    cat2color = {
+        "NS": "lightgrey",
+        "p-value": "tab:blue",
+        "Log2FC": "tab:green",
+        "p-value & Log2FC": "tab:red",
+    }
+    df["color"] = df["cat"].map(cat2color)
 
     fig, ax = plt.subplots(**subplot_kwargs)
-    ax = sns.scatterplot(
-        data=df,
-        x=log2fc_column,
-        y="nlog10",
-        hue="color",
-        hue_order=hues,
-        palette=colors,
-        size="logBaseMean",
+    df1 = df[df[pvalue_column] >= min_value]
+    df2 = df[df[pvalue_column] < min_value]
+    ax.scatter(
+        x=df1[log2fc_column],
+        y=df1["-log10(padj)"],
+        c=df1["color"],
+        s=df1["size"],
+        marker="o",
+        alpha=alpha,
         **plot_kwargs,
     )
-
-    # make labels
-    texts = []
-    for i in range(len(label_df)):
-        txt = ax.text(
-            x=label_df.iloc[i][log2fc_column],
-            y=label_df.iloc[i].nlog10,
-            s=label_df.iloc[i][symbol_column],
-            **text_kwargs,
-        )
-        txt.set_path_effects([patheffects.withStroke(linewidth=3, foreground="w")])
-        texts.append(txt)
-    adjust_text(texts, arrowprops=dict(arrowstyle="-", color="k", zorder=5))
-
-    # plot the p-value threshold (horizontally) and log2FC thresholds (vertically)
-    ax.axhline(pval_thresh, zorder=0, c="k", lw=2, ls="--")
-    ax.axvline(log2fc_thresh, zorder=0, c="k", lw=2, ls="--")
-    ax.axvline(log2fc_thresh * -1, zorder=0, c="k", lw=2, ls="--")
-
+    ax.scatter(
+        x=df2[log2fc_column],
+        y=df2["-log10(padj)"],
+        c=df2["color"],
+        s=df2["size"],
+        marker="^",
+        alpha=alpha,
+        **plot_kwargs,
+    )
+    ax.axhline(pval_thresh, zorder=-1, c="k", lw=1.5, ls="--", alpha=alpha)
+    ax.axvline(log2fc_thresh, zorder=-1, c="k", lw=1.5, ls="--", alpha=alpha)
+    ax.axvline(-log2fc_thresh, zorder=-1, c="k", lw=1.5, ls="--", alpha=alpha)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
     ax.set_xlabel("$log_{2}$ fold change")
     ax.set_ylabel(f"-$log_{{10}}$ adjusted p-value")
-    ax.legend()
+
+    # legend with color descriptions + dot size scale
+    legend_elements = [
+        # Line2D([0], [0], marker='o', color='w', label="color: ", markersize=0),
+        # Line2D([0], [0], marker='o', color='w', label="baseMean: ", markersize=0)
+    ]
+    #     n = 0
+    for cat, color in cat2color.items():
+        legend_elements.append(
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                label=cat,
+                markerfacecolor=color,
+                markersize=10,
+                lw=0,
+                alpha=alpha,
+            )
+        )
+
+        # n += 1 / (len(cat2color) + 1)
+        # s = df["size"].quantile(n)
+        # bm = df[baseMean_column].quantile(n).round(2)
+        # legend_elements.append(
+        #     Line2D(
+        #         [0],
+        #         [0],
+        #         marker="o",
+        #         color="w",
+        #         label=bm,
+        #         markerfacecolor=cat2color["NS"],
+        #         markersize=s,
+        #         lw=0,
+        #         alpha=0.33,
+        #     )
+        # )
+
+    ax.legend(
+        handles=legend_elements,
+        bbox_to_anchor=(0.0, 1.02, 1.0, 0.102),
+        loc="lower left",
+        ncols=len(cat2color),
+        mode="expand",
+        borderaxespad=0.0,
+        frameon=False,
+    )
+
+    if to_label:
+        # label the top and bottom n genes
+        df["sorter"] = df["-log10(padj)"] * df[log2fc_column]
+        if isinstance(to_label, int):
+            label_df = pd.concat(
+                (
+                    df.sort_values("sorter")[-to_label:],
+                    df.sort_values("sorter")[0:to_label],
+                )
+            )
+        else:
+            label_df = df[df[symbol_column].isin(to_label)]
+        texts = []
+        for i in range(len(label_df)):
+            txt = ax.text(
+                x=label_df.iloc[i][log2fc_column],
+                y=label_df.iloc[i]["-log10(padj)"],
+                s=label_df.iloc[i][symbol_column],
+                **text_kwargs,
+            )
+            txt.set_path_effects([patheffects.withStroke(linewidth=3, foreground="w")])
+            texts.append(txt)
+        adjust_text(texts, arrowprops=dict(arrowstyle="-", color="k", zorder=5), ax=ax)
 
     return fig, ax
