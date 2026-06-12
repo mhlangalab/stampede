@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from sklearn.preprocessing import MinMaxScaler
 
 if TYPE_CHECKING:
     from pydeseq2.dds import DeseqDataSet
@@ -127,6 +128,7 @@ def plot_pydeseq2_volcano(
     pval_thresh: float = 0.05,
     log2fc_thresh: float = 0.75,
     to_label: int | list | None = 5,
+    scale_size: bool = False,
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
     text_kwargs: dict = None,
@@ -147,6 +149,7 @@ def plot_pydeseq2_volcano(
          considered significant
         to_label: If an int is passed, that number of top down and up genes will be labeled.
             If a list of gene Ids is passed, only those will be labeled
+        scale_size: scale the marker size in the plot (based on the baseMean values)
         subplot_kwargs: kwargs passed to plt.subplots
         plot_kwargs: kwargs passed to the main plotting function
         text_kwargs: kwargs passed to ax.text
@@ -167,6 +170,9 @@ def plot_pydeseq2_volcano(
     min_value = min(1e-9, df[df[pvalue_column] > 0][pvalue_column].min() / 10)
     df["-log10(padj)"] = -np.log10(np.clip(df[pvalue_column], min_value, None))
     df["size"] = 100 * df[baseMean_column]
+    if scale_size:
+        scaler = MinMaxScaler(feature_range=(10, 100))
+        df["size"] = scaler.fit_transform(df["size"].values.reshape(-1, 1))
 
     def map_genes(row):
         l2fc, log10p = row

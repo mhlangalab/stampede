@@ -330,7 +330,7 @@ def plot_slide_qc(
         figsize=(figsize[0] * ncols, figsize[1] * nrows + 1),
         sharex=True,
         sharey=True,
-        gridspec_kw={"wspace": 0, "hspace": 0, "height_ratios": [1.5, 4, 4]},
+        gridspec_kw={"wspace": 0, "hspace": 0, "height_ratios": [1.5] + [4]*len(slides)},
         layout="tight",
         **subplot_kwargs,
     )
@@ -380,7 +380,7 @@ def plot_slide_qc(
                 ax.set_ylabel(f"slide {slide}")
 
             # only plot the colorbar once per column
-            if i_row == 1:
+            if i_row == 0:
                 if pd.api.types.is_numeric_dtype(fov_df[column]):
                     sm = plt.cm.ScalarMappable(cmap="coolwarm", norm=norm)
                     sm.set_array([])
