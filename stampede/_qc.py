@@ -285,6 +285,7 @@ def plot_slide_qc(
     figsize: tuple = None,
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
+    legend_kwargs: dict = None,
 ) -> tuple[Figure, list[Axes]]:
     """
     Plot the values from one or more QC columns in adata.uns["fov_metadata"]
@@ -297,6 +298,7 @@ def plot_slide_qc(
         figsize: tuple of figure, will be multiplied by the number of plots
         subplot_kwargs: kwargs passed to plt.subplots
         plot_kwargs: kwargs passed to the main plotting function
+        legend_kwargs: kwargs passed to the legends
 
     Returns:
         matplotlib figure and array of axes
@@ -307,6 +309,8 @@ def plot_slide_qc(
         subplot_kwargs = {}
     if plot_kwargs is None:
         plot_kwargs = {}
+    if legend_kwargs is None:
+        legend_kwargs = {}
     fov_df = adata.uns["fov_metadata"]
     required_cols = ["slide", "x", "y"]
     for col in required_cols:
@@ -330,7 +334,11 @@ def plot_slide_qc(
         figsize=(figsize[0] * ncols, figsize[1] * nrows + 1),
         sharex=True,
         sharey=True,
-        gridspec_kw={"wspace": 0, "hspace": 0, "height_ratios": [1.5] + [4]*len(slides)},
+        gridspec_kw={
+            "wspace": 0,
+            "hspace": 0,
+            "height_ratios": [1.5] + [4] * len(slides),
+        },
         layout="tight",
         **subplot_kwargs,
     )
@@ -404,6 +412,7 @@ def plot_slide_qc(
                         bbox_to_anchor=(0.5, 0.0),
                         frameon=False,
                         title=column,
+                        **legend_kwargs,
                     )
 
     # return the plot elements for manual post-processing
@@ -775,14 +784,24 @@ def plot_avg_per_pixel(
     )
 
     # Lineplot
-    axs[1].set_title(f"Average values per row/column")
+    axs[1].set_title(f"Average values per axis")
     x_average = np.average(grid, axis=0)
     x_stdev = np.std(grid, axis=0)
     y_average = np.average(grid, axis=1)
     y_stdev = np.std(grid, axis=1)
-    max_average = max(max(y_average), max(x_average))
     axs[1].set_xlim(0, max(x_max, y_max))
-    axs[1].set_ylim(-max_average * 0.02, max_average * 1.02)
+    axs[1].set_ylim(
+        min(
+            np.quantile(y_average - y_stdev, 0.02),
+            np.quantile(x_average - x_stdev, 0.02),
+        )
+        * 0.98,
+        max(
+            np.quantile(y_average + y_stdev, 0.98),
+            np.quantile(x_average + x_stdev, 0.98),
+        )
+        * 1.02,
+    )
     axs[1].plot(x_average, label="mean x-axis")
     axs[1].fill_between(
         range(len(x_average)),
