@@ -270,7 +270,9 @@ def _add_metadata(obs, file_md, slide, columns=None, data_dir: str = None, **kwa
     md[index] = f"{slide}-" + md["fov"].astype(str) + "-" + md["cell_ID"].astype(str)
 
     # if both files are sorted, we can concatenate blindly
-    assert len(md[index]) == len(obs[index]), "exprMat and metadata files have different lengths!"
+    assert len(md[index]) == len(
+        obs[index]
+    ), "exprMat and metadata files have different lengths!"
     assert (md[index] == obs[index]).all(), "exprMat and metadata files are not sorted!"
     obs = pd.concat(
         [obs, md.drop(columns=config.get("metadata_md_columns") + [index])], axis=1
