@@ -6,6 +6,75 @@ import operator
 import anndata as ad
 
 
+def filter_edges(
+    adata,
+    all_edges: int = 0,
+    left: int = 0,
+    top: int = 0,
+    right: int = 0,
+    bottom: int = 0,
+    slide: int = None,
+    verbose: bool = True,
+):
+    """
+    Filter cells based on their distance to one or more edges of its FOV.
+    Uses the largest distance per edge.
+
+    Args:
+        adata: adata object
+        all_edges: minimum distance from any edge in pixels
+        left: minimum distance from the left edge in pixels (x = xmin + left)
+        top: minimum distance from the top edge in pixels (y = ymin + top)
+        right: minimum distance from the right edge in pixels (x = xmax - right)
+        bottom: minimum distance from the bottom edge in pixels (y = ymax - bottom)
+        slide: which slide to filter (default: all)
+        verbose: provide written feedback
+
+    Returns:
+        the filtered adata object
+    """
+    filter_columns = []
+    if left or right:
+        left = max(left, all_edges)
+        right = max(right, all_edges)
+        filter_columns.append(
+            adata.obs["CenterX_local_px"].between(
+                0 + left, adata.uns["fov_dims_px"]["x"] - right
+            )
+        )
+    if top or bottom:
+        top = max(top, all_edges)
+        bottom = max(bottom, all_edges)
+        filter_columns.append(
+            adata.obs["CenterY_local_px"].between(
+                0 + top, adata.uns["fov_dims_px"]["y"] - bottom
+            )
+        )
+    if all_edges:
+        filter_columns.append(adata.obs["dist2edge_px"] >= all_edges)
+
+    # combine all filters
+    if len(filter_columns) == 0:
+        return adata
+    elif len(filter_columns) == 1:
+        total_cell_filter = filter_columns[0]
+    else:
+        total_cell_filter = functools.reduce(operator.and_, filter_columns)
+
+    before = len(adata.obs)
+    if slide:
+        # keep all cells from other slides
+        if slide not in adata.obs["slide"]:
+            raise ValueError(f"{slide=} not found in adata.ons['slide']!")
+        adata = adata[total_cell_filter | (adata.obs["slide"] != slide), :].copy()
+    else:
+        adata = adata[total_cell_filter, :].copy()
+    after = len(adata.obs)
+    if verbose:
+        print(f"{before - after:_} cells filtered out, {after:_} cell remaining.")
+    return adata
+
+
 def filter_genes(
     adata: ad.AnnData,
     ncell_min: int = 0,
@@ -71,11 +140,10 @@ def filter_genes(
 
 def filter_cells(
     adata: ad.AnnData,
-    dist2edge_px_min: int = 0,
     falsecode_max: int = 5,
     negprobe_max: int = 3,
-    ntranscript_min: int = 250,
-    ntranscript_max: int = 1500,
+    ntranscript_min: int = 0,
+    ntranscript_max: int = float("inf"),
     area_min: int = 25,
     area_max: int = 100,
     filter_columns: list = None,
@@ -87,7 +155,6 @@ def filter_cells(
 
     Args:
         adata: adata object
-        dist2edge_px_min:
         falsecode_max: maximum number of false codes the cell may have
         negprobe_max: maximum number of negative probes the cell may have
         ntranscript_min: minimum number of transcripts the cell must have
@@ -113,8 +180,6 @@ def filter_cells(
     adata.strings_to_categoricals()
     filter_columns = [adata.obs[col] for col in filter_columns]
 
-    dist2edge_filter = adata.obs["dist2edge_px"] >= dist2edge_px_min
-    filter_columns.append(dist2edge_filter)
     falsecode_filter = ~(adata.obs["nCount_falsecode"] >= falsecode_max)
     filter_columns.append(falsecode_filter)
     negprobe_filter = ~(adata.obs["nCount_negprobes"] >= negprobe_max)
@@ -137,5 +202,4 @@ def filter_cells(
     after = len(adata.obs)
     if verbose:
         print(f"{before - after:_} cells filtered out, {after:_} cells remaining.")
-
     return adata
