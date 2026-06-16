@@ -101,6 +101,30 @@ def knn_count_smoothing(
         print(f"{layer_added} layer set as adata.X")
 
 
+def combine_obs_columns(
+    adata: ad.AnnData, columns: list, column_name: str, delim: str = "_"
+):
+    """
+    Create a new column in adata.obs by combining all columns with the delimiter.
+
+    Args:
+        adata: an adata object
+        columns: a list of columns in adata.obs to combine
+        column_name: the name for the new column
+        delim: the delimiter to use while joining the columns
+
+    Returns:
+        Nothing, updates adata.obs
+    """
+    if not isinstance(columns, (list, set, tuple)):
+        raise TypeError(f"columns must be a list, set or tuple, not {type(columns)}")
+    if len(columns) < 2:
+        raise ValueError(f"columns must contain 2 or more columns")
+    adata.obs[column_name] = (
+        adata.obs[columns].astype(str).apply(lambda x: delim.join(x), axis=1)
+    )
+
+
 def pseudobulk(
     adata: ad.AnnData,
     sample_column: str,
@@ -142,14 +166,14 @@ def pseudobulk(
 
 
 def detection_rates(
-    adata: ad.AnnData, sample_column: str, normalize: bool = True
+    adata: ad.AnnData, column: str, normalize: bool = True
 ) -> pd.DataFrame:
     """
-    Calculate gene detection rates per sample in the sample_column of adata.obs.
+    Calculate gene detection rates per group in the specified column of adata.obs.
 
     Args:
         adata: adata object
-        sample_column: column in adata.obs
+        column: column in adata.obs with groups to compare
         normalize: normalize detection rates for sample quality
 
     Returns:
@@ -158,11 +182,10 @@ def detection_rates(
     # gene detection rate per sample
     columns = []
     det_rate_cols = []
-    for sample, ncells in adata.obs[sample_column].value_counts().items():
+    for sample, ncells in adata.obs[column].value_counts().items():
         columns.append(sample)
         det_rates = (
-            adata[adata.obs[sample_column] == sample].layers["binary"].sum(axis=0).A
-            / ncells
+            adata[adata.obs[column] == sample].layers["binary"].sum(axis=0).A / ncells
         )
         det_rate_cols.append(det_rates[0, :])
     det_rate_df = pd.DataFrame(det_rate_cols, index=columns, columns=adata.var_names).T

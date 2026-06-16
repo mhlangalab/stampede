@@ -16,7 +16,7 @@ from matplotlib.lines import Line2D
 def paired_binomial_glm(
     df: pd.DataFrame,
     adata: ad.AnnData,
-    sample_column: str,
+    column: str,
     test_condition: str,
     reference_condition: str,
     condition_column: str = "condition",
@@ -30,12 +30,12 @@ def paired_binomial_glm(
     Args:
         df: dataframe with detection rates per gene per sample
         adata: the adata from which the detection rates were obtained
-        sample_column: the column in adata.obs from which the detection rate df
+        column: the column in adata.obs from which the detection rate df
          column names were obtained
         test_condition: the condition to compare (e.g., "treated")
         reference_condition: the baseline condition (e.g., "control")
-        condition_column: column with the condition
-        covariate_columns: column(s) with covariates (e.g. "donor")
+        condition_column: column with the conditions
+        covariate_columns: column(s) with covariates (e.g. "batch")
         random_state: random seed value
 
     Returns:
@@ -48,17 +48,17 @@ def paired_binomial_glm(
     from statsmodels.tools.sm_exceptions import PerfectSeparationWarning  # noqa
 
     df = df.stack().reset_index()
-    df.columns = ["gene", sample_column, "detection_rate"]
-    df[sample_column] = df[sample_column].astype(str)
+    df.columns = ["gene", column, "detection_rate"]
+    df[column] = df[column].astype(str)
 
     # add the condition per sample
     sample2condition = (
-        adata.obs[[sample_column, condition_column]]
-        .set_index(sample_column)[condition_column]
+        adata.obs[[column, condition_column]]
+        .set_index(column)[condition_column]
         .astype(str)
         .to_dict()
     )
-    df[condition_column] = df[sample_column].map(sample2condition)
+    df[condition_column] = df[column].map(sample2condition)
 
     # sanity check
     unique_conditions = df[condition_column].unique()
@@ -68,8 +68,8 @@ def paired_binomial_glm(
         raise ValueError(f"{test_condition=} not found in dataframe:\n{df}")
 
     # add the number of cells per sample
-    sample2ncells = adata.obs[sample_column].value_counts().astype(str).to_dict()
-    df["ncells"] = df[sample_column].replace(sample2ncells).astype(int)
+    sample2ncells = adata.obs[column].value_counts().astype(str).to_dict()
+    df["ncells"] = df[column].replace(sample2ncells).astype(int)
 
     # add all covariate columns
     if covariate_columns is None:
@@ -78,12 +78,9 @@ def paired_binomial_glm(
         covariate_columns = [covariate_columns]
     for col in covariate_columns:
         sample2covariate = (
-            adata.obs[[sample_column, col]]
-            .set_index(sample_column)[col]
-            .astype(str)
-            .to_dict()
+            adata.obs[[column, col]].set_index(column)[col].astype(str).to_dict()
         )
-        df[col] = df[sample_column].map(sample2covariate)
+        df[col] = df[column].map(sample2covariate)
 
     # convert all metadata columns to categorical
     string_cols = df.select_dtypes(include="object").columns
