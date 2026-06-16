@@ -20,7 +20,7 @@ def paired_binomial_glm(
     test_condition: str,
     reference_condition: str,
     condition_column: str = "condition",
-    covariate_columns: str = None,
+    covariate_columns: str | list = None,
     random_state: int = 42,
 ) -> pd.DataFrame | None:
     """

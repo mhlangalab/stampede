@@ -21,28 +21,30 @@ if TYPE_CHECKING:
 
 
 def pydeseq2(
+    counts: pd.DataFrame,
     adata: ad.AnnData,
-    design: str,
-    contrast: list,
-    layer: str = "binary",
+    column: str,
+    test_condition: str,
+    reference_condition: str,
+    condition_column: str,
+    covariate_columns: str | list = None,
     inference: Inference = None,
     n_cpus: int = 16,
     return_objects: bool = False,
     dds_kwargs: dict = None,
     ds_kwargs: dict = None,
-) -> tuple[DeseqDataSet, DeseqStats, pd.DataFrame] | pd.DataFrame:
+):
     """
-    Wrapper around pyDEseq2 for adata objects.
-
-    See https://pydeseq2.readthedocs.io/en/latest/auto_examples/plot_minimal_pydeseq2_pipeline.html
+    pyDEseq2 wrapper for pseudobulk DGE
 
     Args:
-        adata: adata object
-        design: a formula in the format 'x + z' or '~x+z'.
-         Each factor must be a column in adata.obs
-        contrast:  a list of three strings in the following format:
-         ['variable_of_interest', 'tested_level', 'ref_level']
-        layer: name of the adata layer where values are drawn from
+        counts: dataframe with counts per gene per sample
+        adata: the adata from which the counts were obtained
+        column: column in adata.obs with groups to compare
+        test_condition: the condition to compare (e.g., "treated")
+        reference_condition: the baseline condition (e.g., "control")
+        condition_column: column with the conditions
+        covariate_columns: column(s) with covariates (e.g. "batch")
         inference: pyDESeq2 inference class instance
         n_cpus: number of threads to use
         return_objects: return the DeseqDataSet, DeseqStats and the results_df.
@@ -65,39 +67,25 @@ def pydeseq2(
     if ds_kwargs is None:
         ds_kwargs = {}
 
-    # pyDESeq2 does not work with sparse matrices
-    counts = adata.layers[layer]
-    if isinstance(counts, pd.DataFrame):
-        # dataframes
-        if len(counts.index) == len(adata.var.index) and len(counts.columns) == len(
-            adata.obs.index
-        ):
-            # must have cells for rows and genes for columns
-            counts = counts.T
-    elif "scipy.sparse." in str(type(counts)):
-        # any kind of sparse matrics
-        counts = pd.DataFrame.sparse.from_spmatrix(
-            data=counts,
-            index=adata.obs.index,
-            columns=adata.var.index,
-        )
-    else:
-        # numpy arrays/matrices
-        counts = pd.DataFrame(
-            data=counts,
-            index=adata.obs.index,
-            columns=adata.var.index,
-        )
-
+    if covariate_columns is None:
+        covariate_columns = []
+    elif isinstance(covariate_columns, str):
+        covariate_columns = [covariate_columns]
+    metadata = (
+        adata.obs[[column, condition_column] + covariate_columns]
+        .drop_duplicates(ignore_index=True)
+        .set_index(column)
+    )
+    design_formula = "~ " + " + ".join([condition_column] + covariate_columns)
     # cannot capture the warnings due to multiprocessing
     with warnings.catch_warnings():
         # invalid value encountered in slogdet
         warnings.simplefilter("ignore", category=RuntimeWarning)
 
         dds = DeseqDataSet(
-            counts=counts,
-            metadata=adata.obs,
-            design=design,
+            counts=counts.T,
+            metadata=metadata,
+            design=design_formula,
             inference=inference,
             **dds_kwargs,
         )
@@ -105,7 +93,7 @@ def pydeseq2(
 
         ds = DeseqStats(
             dds,
-            contrast=contrast,
+            contrast=[condition_column, test_condition, reference_condition],
             n_cpus=n_cpus,
             **ds_kwargs,
         )
@@ -119,16 +107,114 @@ def pydeseq2(
         return df
 
 
+# def pydeseq2(
+#     adata: ad.AnnData,
+#     design: str,
+#     contrast: list,
+#     layer: str = "binary",
+#     inference: Inference = None,
+#     n_cpus: int = 16,
+#     return_objects: bool = False,
+#     dds_kwargs: dict = None,
+#     ds_kwargs: dict = None,
+# ) -> tuple[DeseqDataSet, DeseqStats, pd.DataFrame] | pd.DataFrame:
+#     """
+#     Wrapper around pyDEseq2 for adata objects.
+#
+#     See https://pydeseq2.readthedocs.io/en/latest/auto_examples/plot_minimal_pydeseq2_pipeline.html
+#
+#     Args:
+#         adata: adata object
+#         design: a formula in the format 'x + z' or '~x+z'.
+#          Each factor must be a column in adata.obs
+#         contrast:  a list of three strings in the following format:
+#          ['variable_of_interest', 'tested_level', 'ref_level']
+#         layer: name of the adata layer where values are drawn from
+#         inference: pyDESeq2 inference class instance
+#         n_cpus: number of threads to use
+#         return_objects: return the DeseqDataSet, DeseqStats and the results_df.
+#          If False, only return the results_df
+#         dds_kwargs: kwargs passed to DeseqDataSet
+#         ds_kwargs: kwargs passed to DeseqStats
+#
+#     Returns:
+#         pydeseq2 output
+#     """
+#     # optional dependency
+#     from pydeseq2.dds import DeseqDataSet  # noqa
+#     from pydeseq2.default_inference import DefaultInference  # noqa
+#     from pydeseq2.ds import DeseqStats  # noqa
+#
+#     if inference is None:
+#         inference = DefaultInference(n_cpus=n_cpus)
+#     if dds_kwargs is None:
+#         dds_kwargs = {}
+#     if ds_kwargs is None:
+#         ds_kwargs = {}
+#
+#     # pyDESeq2 does not work with sparse matrices
+#     counts = adata.layers[layer]
+#     if isinstance(counts, pd.DataFrame):
+#         # dataframes
+#         if len(counts.index) == len(adata.var.index) and len(counts.columns) == len(
+#             adata.obs.index
+#         ):
+#             # must have cells for rows and genes for columns
+#             counts = counts.T
+#     elif "scipy.sparse." in str(type(counts)):
+#         # any kind of sparse matrics
+#         counts = pd.DataFrame.sparse.from_spmatrix(
+#             data=counts,
+#             index=adata.obs.index,
+#             columns=adata.var.index,
+#         )
+#     else:
+#         # numpy arrays/matrices
+#         counts = pd.DataFrame(
+#             data=counts,
+#             index=adata.obs.index,
+#             columns=adata.var.index,
+#         )
+#
+#     # cannot capture the warnings due to multiprocessing
+#     with warnings.catch_warnings():
+#         # invalid value encountered in slogdet
+#         warnings.simplefilter("ignore", category=RuntimeWarning)
+#
+#         dds = DeseqDataSet(
+#             counts=counts,
+#             metadata=adata.obs,
+#             design=design,
+#             inference=inference,
+#             **dds_kwargs,
+#         )
+#         dds.deseq2()
+#
+#         ds = DeseqStats(
+#             dds,
+#             contrast=contrast,
+#             n_cpus=n_cpus,
+#             **ds_kwargs,
+#         )
+#         ds.summary()
+#
+#         df = ds.results_df
+#
+#     if return_objects:
+#         return dds, ds, df
+#     else:
+#         return df
+
+
 def plot_pydeseq2_volcano(
     df: pd.DataFrame,
     symbol_column: str = "index",
     log2fc_column: str = "log2FoldChange",
     pvalue_column: str = "padj",
-    baseMean_column: str = "baseMean",
+    basemean_column: str = "baseMean",
     pval_thresh: float = 0.05,
     log2fc_thresh: float = 0.75,
     to_label: int | list | None = 5,
-    scale_size: bool = False,
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
     text_kwargs: dict = None,
@@ -143,13 +229,12 @@ def plot_pydeseq2_volcano(
         symbol_column: column name of gene IDs to use
         log2fc_column: column name of log2 Fold-Change values
         pvalue_column: column name of the adjusted p values to be converted to -log10 p-values
-        baseMean_column: column name of base mean values for each gene
+        basemean_column: column name of base mean values for each gene
         pval_thresh: threshold pvalue_column for points to be significant
         log2fc_thresh: threshold for the absolute value of the log2 fold change to be
          considered significant
         to_label: If an int is passed, that number of top down and up genes will be labeled.
             If a list of gene Ids is passed, only those will be labeled
-        scale_size: scale the marker size in the plot (based on the baseMean values)
         subplot_kwargs: kwargs passed to plt.subplots
         plot_kwargs: kwargs passed to the main plotting function
         text_kwargs: kwargs passed to ax.text
@@ -169,10 +254,8 @@ def plot_pydeseq2_volcano(
     pval_thresh = -np.log10(pval_thresh)
     min_value = min(1e-9, df[df[pvalue_column] > 0][pvalue_column].min() / 10)
     df["-log10(padj)"] = -np.log10(np.clip(df[pvalue_column], min_value, None))
-    df["size"] = 100 * df[baseMean_column]
-    if scale_size:
-        scaler = MinMaxScaler(feature_range=(10, 100))
-        df["size"] = scaler.fit_transform(df["size"].values.reshape(-1, 1))
+    scaler = MinMaxScaler(feature_range=(10, 100))
+    df["size"] = scaler.fit_transform(df[basemean_column].values.reshape(-1, 1))
 
     def map_genes(row):
         l2fc, log10p = row

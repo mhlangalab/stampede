@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-
 import anndata as ad
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
-from natsort import natsorted
 
 
 def binarize(adata: ad.AnnData, verbose: bool = True) -> None:
@@ -126,7 +123,9 @@ def combine_obs_columns(
 
 
 def pseudobulk(
-    adata: ad.AnnData, column: str, layer: str = "binary",
+    adata: ad.AnnData,
+    column: str,
+    layer: str = "binary",
 ) -> pd.DataFrame:
     """
     Generate a pseudobulk table (genes x samples) for all samples in the sample_column
