@@ -126,12 +126,7 @@ def combine_obs_columns(
 
 
 def pseudobulk(
-    adata: ad.AnnData,
-    sample_column: str,
-    samples: Iterable = None,
-    cluster_column: str = None,
-    cluster: str = None,
-    layer: str = "counts",
+    adata: ad.AnnData, column: str, layer: str = "binary",
 ) -> pd.DataFrame:
     """
     Generate a pseudobulk table (genes x samples) for all samples in the sample_column
@@ -139,29 +134,21 @@ def pseudobulk(
 
     Args:
         adata: adata object
-        sample_column: column in adata.obs
-        samples: samples in the sample columns to use (default: all)
-        cluster_column: column in adata.obs (only needed if cluster is specified)
-        cluster: name of the cluster in cluster_column to aggregate to pseudobulk
+        column: column in adata.obs with groups to compare
         layer: name of the adata layer to aggregate
 
     Returns:
         a dataframe with summed layer values per sample
     """
-    if cluster:
-        # subset adata to specified cluster
-        if cluster not in adata.obs[cluster_column].unique():
-            raise ValueError(f"{cluster=} not found in adata.obs['{cluster_column}']")
-        adata = adata[adata.obs[cluster_column] == cluster]
-
     sample2counts = {}
-    if samples is None:
-        samples = natsorted(adata.obs[sample_column].unique())
-    for sample in samples:
-        X = adata[adata.obs[sample_column] == sample].layers[layer]
+    for sample in adata.obs[column].unique():
+        X = adata[adata.obs[column] == sample].layers[layer]
         sample2counts[sample] = X.sum(axis=0).A1
 
     pseudobulk_df = pd.DataFrame(data=sample2counts, index=adata.var_names)
+    # convert to integers if there are no decimal values
+    if (pseudobulk_df == np.floor(pseudobulk_df)).any().any():
+        pseudobulk_df = pseudobulk_df.astype(int)
     return pseudobulk_df
 
 
