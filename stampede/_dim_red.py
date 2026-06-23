@@ -278,9 +278,9 @@ def plot_dim_red(
 def plot_dim_red_cell_values(
     adata: ad.AnnData,
     n_dims: int = 5,
-    basis="umap_svd",
-    latent_key="X_svd",
-    show=True,
+    basis: str = "umap_svd",
+    latent_key: str = "X_svd",
+    show: bool = True,
     **kwargs,
 ):
     """

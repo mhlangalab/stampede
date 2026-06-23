@@ -193,6 +193,17 @@ def gene_qc(
 
 
 def plot_noise_threshold(adata: ad.AnnData, bins: int = 50, **kwargs):
+    """
+    Plot the noise threshold set by the st.pp.gene_qc() function.
+
+    Args:
+        adata: an adata object
+        bins: the number of bins to plot
+        kwargs: kwargs passed to the st.pl.column_distribution() function
+
+    Returns:
+        Nothing, updates adata.var
+    """
     fig, ax = plot_column_distribution(
         adata,
         "mean_Transcript",
