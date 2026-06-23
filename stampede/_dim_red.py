@@ -292,12 +292,14 @@ def plot_dim_red_cell_values(
         adata: an adata object
         n_dims: number of latent dimensions a plot is generated for
         basis: key in adata.obsm with the UMAP (or other embedding) coordinates. See sc.pl.embedding().
-        latent_key: key in adata.obsm with dimensionality reduction latent variables. Cells will be colored by their value in these dimensions.
+        latent_key: key in adata.obsm with dimensionality reduction latent variables.
+         Cells will be colored by their value in these dimensions.
         show: passed to sc.pl.embedding().
         **kwargs: Passed to sc.pl.embedding().
 
     Returns:
-        If show=True, returns None and shows the figures. If show=False, returns the output of sc.pl.embedding(..., show=False).
+        If show=True, returns None and shows the figures.
+         If show=False, returns the output of sc.pl.embedding(..., show=False).
     """
 
     cols = [f"LSI_{i+1}" for i in range(n_dims)]

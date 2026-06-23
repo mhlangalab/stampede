@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os.path
+
 import anndata as ad
 import numpy as np
 import pandas as pd
@@ -220,7 +222,7 @@ def detection_rates(
 
 def annotate_genelist(
     adata: ad.AnnData,
-    genefile: str,
+    genes: list | str,
     colname: str = None,
 ) -> None:
     """
@@ -228,25 +230,30 @@ def annotate_genelist(
 
     Args:
         adata: adata object
-        genefile: full path to a text file containing one gene name per line
-        colname: column name for new annotation column written to adata.var. When not given, uses the filename of genefile.
+        genes: a list of genes, or a path to a text file containing one gene name per line
+        colname: column name for new annotation column written to adata.var.
+         When not given, uses the filename of genes.
 
     Returns:
         Nothing, updates adata.var
-
     """
+    if isinstance(genes, str):
+        # If colname isn't given, create the column name from the genes file
+        if not colname:
+            fname = os.path.basename(genes).replace(".gz", "").rsplit(".", 1)[0]
+            colname = f"is_{fname}"
 
-    # If colname isn't given, create column name from the path
-    # to the genefile by stripping directories and extension.
-    if not colname:
-        colname = f"is_{genefile.split("/")[-1].split(".")[0]}"
+        # Read in genes from textfile
+        with open(genes, "r") as f:
+            geneset = [line.strip() for line in f]
+    else:
+        # If colname isn't given, raise an error
+        if not colname:
+            raise ValueError("a colname is required when using a list of genes")
 
-    # Read in genes from textfile
-    with open(genefile, "r") as f:
-        geneset = [line.strip() for line in f]
+        geneset = genes
 
     # Check for all genes in adata if they are present
-    # in the geneset.
     adata.var[colname] = adata.var_names.isin(geneset)
 
     return None
