@@ -7,8 +7,8 @@ STAMP data Exploration and Differential Expression
 ==================================================
 
 .. mdinclude:: ../README.md
-   :start-line: 5
-   :end-line: 10
+   :start-line: 7
+   :end-line: 12
 
 Contents
 ========

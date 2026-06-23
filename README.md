@@ -1,6 +1,8 @@
 # STAMPede - STAMP data Exploration and Differential Expression
 
 [![Documentation](https://github.com/mhlangalab/stampede/actions/workflows/docs.yml/badge.svg)](https://github.com/mhlangalab/stampede/actions/workflows/docs.yml)
+pypi: soon
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/stampede/README.html)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Process & analyse [STAMP data](https://doi.org/10.1016/j.cell.2025.05.027) with ease!
@@ -11,19 +13,27 @@ STAMPede is built to handle huge datasets with shallow depth, using syntax famil
 ## Table of Contents
 
 1.  [Installation](#installation)
-2.  [Developer installation](#developer-installation)
-3.  [Usage](#usage)
-4.  [Citation](#citation)
+2.  [Usage](#usage)
+3.  [Citation](#citation)
 
 
 
 ## Installation
 
-### Pip/Conda
+### Using conda
 
-`stampede` is not yet available on pip/conda.
+```bash
+conda install -c conda-forge -c bioconda stampede
+```
 
+### Using pip
 
+Please note: the Pypi package name different. 
+After installing the `stampede-sc` package, it can be imported as `stampede`
+
+```bash
+pip install stampede-sc
+```
 
 ### Developer installation
 
@@ -32,9 +42,14 @@ Clone the repo
 git clone https://github.com/mhlangalab/stampede.git
 ```
 
+Change directory into the repo
+```bash
+cd stampede
+```
+
 Create a conda environment
 ```bash
-conda env create -n stampede -f stampede/requirements.yaml
+conda env create -n stampede -f requirements.yaml
 ```
 
 Activate the conda environment
@@ -44,7 +59,7 @@ conda activate stampede
 
 Install the package
 ```bash
-pip install -e stampede
+pip install -e .
 ```
 
 

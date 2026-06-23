@@ -3,8 +3,8 @@ Installation
 ============
 
 .. mdinclude:: ../README.md
-   :start-line: 21
-   :end-line: 51
+   :start-line: 22
+   :end-line: 66
 
 ..
    format: (start-line, end-line]

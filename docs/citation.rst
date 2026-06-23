@@ -3,8 +3,8 @@ Citation
 ========
 
 .. mdinclude:: ../README.md
-   :start-line: 65
-   :end-line: 67
+   :start-line: 80
+   :end-line: 82
 
 ..
    format: (start-line, end-line]

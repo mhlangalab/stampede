@@ -1,6 +1,6 @@
 [project]
-name = "stampede"
-description = ""
+name = "stampede-sc"  # `stampede` was taken, this name is only used for `pip install`
+description = "STAMP data Exploration and Differential Expression"
 authors = [
     {name = "Niels Velthuijs", email = "niels@mhlangalab.org"},
     {name = "Siebren Frölich", email = "siebrenf@gmail.com"},
@@ -55,6 +55,10 @@ test = [
 # hatchling is the build backend, and reads the version from the code
 requires = ["hatchling >=1.5.0"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# import the package as `stampede`, despite the name
+packages = ["stampede"]
 
 [tool.hatch.version]
 path = "stampede/__init__.py"
