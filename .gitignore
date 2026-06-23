@@ -1,7 +1,10 @@
 __pycache__
+_build
+.DS_Store
 .idea
 .ipynb_checkpoints
 .venv
 adatas
-_build
+dist
 jupyter_execute
+testenv

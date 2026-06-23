@@ -27,7 +27,12 @@ exclude_patterns = [
     ".github",
     "README.md",
     "_build",
+    "adatas",
+    "data",
+    "dist",
     "jupyter_execute",
+    "testenv",
+    "tests",
 ]
 extensions = [
     "m2r2",  # mdinclude, needs to be before myst_nb
