@@ -225,6 +225,7 @@ def gene_qc_postfilter(adata: ad.AnnData) -> None:
     Returns:
         Nothing, updates adata.var
     """
+
     adata.var["nCell_postfilter"] = adata.X.count_nonzero(axis=0)
     adata.var["pctCell_postfilter"] = (
         100 * adata.var["nCell_postfilter"] / adata.n_obs
@@ -244,6 +245,7 @@ def cell_qc_postfilter(adata: ad.AnnData) -> None:
     Returns:
         Nothing, updates adata.obs
     """
+
     adata.obs["nFeature_RNA_postfilter"] = adata.X.count_nonzero(axis=1)
     adata.obs["nCount_RNA_postfilter"] = adata.X.sum(axis=1)
 

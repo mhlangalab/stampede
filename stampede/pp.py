@@ -3,6 +3,7 @@
 from ._dim_red import dim_red
 from ._filter import filter_cells, filter_edges, filter_genes
 from ._process import (
+    annotate_genelist,
     binarize,
     combine_obs_columns,
     detection_rates,
@@ -25,4 +26,5 @@ __all__ = [
     "combine_obs_columns",
     "detection_rates",
     "pseudobulk",
+    "annotate_genelist",
 ]

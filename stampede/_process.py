@@ -40,6 +40,7 @@ def knn_count_smoothing(
     layer: str = "binary",
     layer_added: str = None,
     neighbors_key: str = "neighbors",
+    normalize_cells: bool = False,
     verbose: bool = True,
 ) -> None:
     """
@@ -53,11 +54,13 @@ def knn_count_smoothing(
         layer: name of the adata layer to use for smoothing
         layer_added: key in adata.layers for function output (default: "KNN_binary_mean")
         neighbors_key: See sc.pp.neighbors for details
+        normalize_cells: When True normalizes the smoothed counts per cell, so that all cells have identical summed smoothed counts.
         verbose: provide written feedback
 
     Returns:
         Nothing, updates adata.layers and adata.X
     """
+
     if layer not in adata.layers:
         raise KeyError(f"{layer=} not found in adata.layers.")
 
@@ -85,6 +88,12 @@ def knn_count_smoothing(
     # average gene presence across its neighborhood
     X = adata.layers[layer]
     data = knn.dot(X)
+
+    # Normalize smoothed counts per cell to the median row-sum:
+    if normalize_cells:
+        row_sums = np.asarray(data.sum(axis=1)).flatten()
+        row_sums[row_sums == 0] = 1  # Avoid division by zero for empty rows
+        data = (sp.diags(1.0 / row_sums) @ data) * np.median(row_sums)
 
     # sanity checks
     assert data.shape == X.shape
@@ -207,3 +216,37 @@ def detection_rates(
             columns=det_rate_df.columns,
         )
     return det_rate_df
+
+
+def annotate_genelist(
+    adata: ad.AnnData,
+    genefile: str,
+    colname: str = None,
+) -> None:
+    """
+    Annotation of genes in an adata object for presence in a text-file.
+
+    Args:
+        adata: adata object
+        genefile: full path to a text file containing one gene name per line
+        colname: column name for new annotation column written to adata.var. When not given, uses the filename of genefile.
+
+    Returns:
+        Nothing, updates adata.var
+
+    """
+
+    # If colname isn't given, create column name from the path
+    # to the genefile by stripping directories and extension.
+    if not colname:
+        colname = f"is_{genefile.split("/")[-1].split(".")[0]}"
+
+    # Read in genes from textfile
+    with open(genefile, "r") as f:
+        geneset = [line.strip() for line in f]
+
+    # Check for all genes in adata if they are present
+    # in the geneset.
+    adata.var[colname] = adata.var_names.isin(geneset)
+
+    return None
