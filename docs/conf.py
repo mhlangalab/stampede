@@ -8,14 +8,18 @@
 
 from datetime import date
 
-import stampede
-
 # -- Project information -----------------------------------------------------
 
 project = "stampede"
 author = "Niels Velthuijs & Siebren Frölich"
 copyright = f"{date.today().year}, {author}"
-version = stampede.__version__
+with open("../stampede/__init__.py") as f:
+    for line in f:
+        if line.startswith("__version__ = "):
+            version = line.replace("__version__ =", "").strip()
+            break
+    else:
+        raise ValueError("__version__ not found in stampede/__init__.py!")
 
 
 # -- General configuration ---------------------------------------------------
@@ -55,9 +59,13 @@ autodoc_mock_imports = [
     "pandas",
     "igraph",
     "scanpy",
-    "scikit-learn",
+    "sklearn",
     "scipy",
     "seaborn",
+
+    "geosketch",
+    "pydeseq2",
+    "statsmodels",
 ]
 # autodoc_member_order = "bysource"
 autodoc_typehints = "both"  # "description"  # "none"
