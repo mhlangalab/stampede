@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Iterable
 
 import anndata as ad
@@ -7,6 +8,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scanpy as sc
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.ticker import MultipleLocator
@@ -54,6 +56,13 @@ def dim_red(
         adata_sub = adata[:, adata.var[use_genes]].copy()
         cell_qc_postfilter(adata_sub)
         gene_qc_postfilter(adata_sub)
+
+        min_count = adata_sub.obs["nFeature_RNA_postfilter"].min()
+        min_count_allgenes = adata.obs["nFeature_RNA_postfilter"].min()
+        if min_count < min_count_allgenes:
+            warnings.warn(
+                f"Due to subsetting on {use_genes}, the lowest number of counts in a cell is {min_count} transcripts. ({min_count_allgenes} transcripts before subsetting). Consider if you need to refilter cells based on the total count within the {use_genes} mask\n\n"
+            )
 
     prefix, uns_key = key_added.split("_", 1)
     if prefix != "X" or len(uns_key) == 0:
@@ -264,3 +273,43 @@ def plot_dim_red(
         ret.append((fig, ax))
 
     return ret
+
+
+def plot_dim_red_cell_values(
+    adata: ad.AnnData,
+    n_dims: int = 5,
+    basis="umap_svd",
+    latent_key="X_svd",
+    show=True,
+    **kwargs,
+):
+    """
+    Plots the value of each cell per dimension of the dimensionality reduction
+    in latent_key. Requires another low-dimensional space (UMAP) as a basis to
+    generate the plot with.
+
+    Args:
+        adata: an adata object
+        n_dims: number of latent dimensions a plot is generated for
+        basis: key in adata.obsm with the UMAP (or other embedding) coordinates. See sc.pl.embedding().
+        latent_key: key in adata.obsm with dimensionality reduction latent variables. Cells will be colored by their value in these dimensions.
+        show: passed to sc.pl.embedding().
+        **kwargs: Passed to sc.pl.embedding().
+
+    Returns:
+        If show=True, returns None and shows the figures. If show=False, returns the output of sc.pl.embedding(..., show=False).
+    """
+
+    cols = [f"LSI_{i+1}" for i in range(n_dims)]
+    for i, col in enumerate(cols):
+        adata.obs[col] = adata.obsm[latent_key][:, i]
+
+    try:
+        plots = sc.pl.embedding(adata, color=cols, basis=basis, show=show, **kwargs)
+    finally:
+        adata.obs.drop(columns=cols, inplace=True)
+
+    if show:
+        return None
+    else:
+        return plots

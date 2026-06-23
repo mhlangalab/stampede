@@ -1,6 +1,7 @@
 """plotting functions"""
 
 from ._dim_red import plot_dim_red as dim_red
+from ._dim_red import plot_dim_red_cell_values as dim_red_cell_values
 from ._dim_red import plot_scree as scree
 from ._qc import plot_avg_per_pixel as avg_per_pixel
 from ._qc import plot_column_distribution as column_distribution
@@ -30,4 +31,5 @@ __all__ = [
     "sketch",
     "pydeseq2_volcano",
     "paired_binomial_glm_volcano",
+    "dim_red_cell_values",
 ]
