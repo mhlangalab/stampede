@@ -4,7 +4,7 @@ Installation
 
 .. mdinclude:: ../README.md
    :start-line: 22
-   :end-line: 66
+   :end-line: 68
 
 ..
    format: (start-line, end-line]

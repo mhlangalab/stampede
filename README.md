@@ -1,7 +1,7 @@
 # STAMPede - STAMP data Exploration and Differential Expression
 
 [![Documentation](https://github.com/mhlangalab/stampede/actions/workflows/docs.yml/badge.svg)](https://github.com/mhlangalab/stampede/actions/workflows/docs.yml)
-pypi: soon
+[![PyPI - Version](https://img.shields.io/pypi/v/stampede-sc)](https://pypi.org/project/stampede-sc/)
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/stampede/README.html)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
@@ -28,8 +28,10 @@ conda install -c conda-forge -c bioconda stampede
 
 ### Using pip
 
-Please note: the Pypi package name different. 
-After installing the `stampede-sc` package, it can be imported as `stampede`
+Notes: 
+
+* the Pypi package name is `stampede-sc`. After installation, the package is imported as `stampede`.
+* the Pypi installation requires HDF5.
 
 ```bash
 pip install stampede-sc
