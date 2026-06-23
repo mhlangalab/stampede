@@ -5,13 +5,12 @@ channels:
 dependencies:
   - adjustText
   - anndata
-#  - h5py
-  - matplotlib
+  - matplotlib-base
   - natsort
   - numpy
-  - pandas <3  # anndata 0.12 cannot handle string columns
-  - python >=3.12  # f-strings
-  - python-igraph  # sc.tl.leiden
+  - pandas <3        # anndata 0.12 cannot handle string columns
+  - python >=3.12    # f-strings
+  - python-igraph    # sc.tl.leiden
   - scanpy
   - scikit-learn
   - scipy
