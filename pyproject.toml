@@ -18,12 +18,12 @@ requires-python = ">=3.12"
 dependencies = [
     "adjustText",
     "anndata",
-    "matplotlib",
+    "matplotlib",      # matplotlib-base on conda
     "natsort",
     "numpy",
-    "pandas <3",  # anndata 0.12 cannot handle string columns
+    "pandas <3",       # anndata 0.12 cannot handle string columns
     #"python >=3.12",  # f-strings
-    "igraph",  # sc.tl.leiden
+    "igraph",          # sc.tl.leiden
     "scanpy",
     "scikit-learn",
     "scipy",
@@ -41,7 +41,7 @@ docs = [
     "myst-nb",
     "pydata-sphinx-theme >=0.17.1",
     "pydeseq2",  # for type hinting
-    "sphinx",
+    "sphinx >=4.0",
     "sphinx-autodoc-typehints",
 ]
 test = [
