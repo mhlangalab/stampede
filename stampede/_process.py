@@ -226,7 +226,7 @@ def annotate_genelist(
     colname: str = None,
 ) -> None:
     """
-    Annotation of genes in an adata object for presence in a text-file.
+    Annotation of genes in an adata object for presence in a list or text file.
 
     Args:
         adata: adata object
