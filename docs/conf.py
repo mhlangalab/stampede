@@ -37,6 +37,7 @@ exclude_patterns = [
     "jupyter_execute",
     "testenv",
     "tests",
+    "venv",
 ]
 extensions = [
     "m2r2",  # mdinclude, needs to be before myst_nb
