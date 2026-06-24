@@ -25,4 +25,4 @@ jobs:
       uses: siebrenf/pages@patch-1  # sphinx-notes/pages@v3
       with:
         python_version: 3.12
-        installer: uv
+        installer: pip  # uv suddenly fails (June 2026)
