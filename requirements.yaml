@@ -18,6 +18,9 @@ dependencies:
 
 # tools
   - geosketch
+  - ipympl           # lasso_clustering
+  - ipython          # lasso_clustering
+  - ipywidgets       # lasso_clustering
   - pydeseq2
   - statsmodels
 
