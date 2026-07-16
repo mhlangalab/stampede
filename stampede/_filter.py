@@ -65,13 +65,13 @@ def filter_edges(
     if slide:
         # keep all cells from other slides
         if slide not in adata.obs["slide"]:
-            raise ValueError(f"{slide=} not found in adata.ons['slide']!")
+            raise ValueError(f"{slide=} not found in adata.obs['slide']!")
         adata = adata[total_cell_filter | (adata.obs["slide"] != slide), :].copy()
     else:
         adata = adata[total_cell_filter, :].copy()
     after = len(adata.obs)
     if verbose:
-        print(f"{before - after:_} cells filtered out, {after:_} cell remaining.")
+        print(f"{before - after:_} cells filtered out, {after:_} cells remaining.")
     return adata
 
 
@@ -104,34 +104,33 @@ def filter_genes(
         filter_columns = []
     elif isinstance(filter_columns, str):
         filter_columns = [filter_columns]
-    adata.strings_to_categoricals()
-    filter_columns = [adata.obs[col] for col in filter_columns]
+    filters = [adata.var[col] for col in filter_columns]
 
     required_cols = ["nCell", "nTranscript", "above_noise", "is_negctrl", "is_sysctrl"]
     missing = [col for col in required_cols if col not in adata.var.columns]
     if missing:
-        raise ValueError(
+        raise KeyError(
             f"Not all required columns ({missing}) are present in adata.var. Run st.pp.gene_qc() first."
         )
 
     ncells_filter = adata.var["nCell"].between(ncell_min, ncell_max)
-    filter_columns.append(ncells_filter)
+    filters.append(ncells_filter)
     ntranscript_filter = adata.var["nTranscript"].between(
         ntranscript_min, ntranscript_max
     )
-    filter_columns.append(ntranscript_filter)
+    filters.append(ntranscript_filter)
     noise_filter = adata.var["above_noise"]
-    filter_columns.append(noise_filter)
+    filters.append(noise_filter)
     negprobe_filter = ~adata.var["is_negctrl"]
-    filter_columns.append(negprobe_filter)
+    filters.append(negprobe_filter)
     falsecode_filter = ~adata.var["is_sysctrl"]
-    filter_columns.append(falsecode_filter)
+    filters.append(falsecode_filter)
 
     # combine all filters
-    total_gene_filter = functools.reduce(operator.and_, filter_columns)
+    total_gene_filter = functools.reduce(operator.and_, filters)
 
     before = len(adata.var)
-    adata = adata[:, total_gene_filter]
+    adata = adata[:, total_gene_filter].copy()
     after = len(adata.var)
     if verbose:
         print(f"{before - after:_} genes filtered out, {after:_} genes remaining.")
@@ -140,13 +139,13 @@ def filter_genes(
 
 def filter_cells(
     adata: ad.AnnData,
-    falsecode_max: int = 5,
-    negprobe_max: int = 3,
+    falsecode_max: int = 4,
+    negprobe_max: int = 2,
     ntranscript_min: int = 0,
     ntranscript_max: int = float("inf"),
     area_min: int = 25,
     area_max: int = 100,
-    filter_columns: list = None,
+    filter_columns: list[str] | str = None,
     filter_internalqc: bool = False,
     verbose: bool = True,
 ) -> ad.AnnData:
@@ -161,8 +160,7 @@ def filter_cells(
         ntranscript_max: maximum number of transcripts the cell must have
         area_min: minimum area (in pixels) the cell must have
         area_max: maximum area (in pixels) the cell must have
-        filter_columns: a list of additional columns to filter by.
-         Columns by (convertible to) boolean, where False values are removed.
+        filter_columns: a list of additional boolean columns to filter by.
         filter_internalqc: filter by columns `qcCellsPassed` and `qcFlagsFOV`.
         verbose: provide written feedback
 
@@ -173,29 +171,28 @@ def filter_cells(
         filter_columns = []
     elif isinstance(filter_columns, str):
         filter_columns = [filter_columns]
-    # else:
-    #     for col in filter_columns:
-    #         if adata.obs[col].dtype != bool:
-    #             raise TypeError(f"filter_column '{col}' must have a boolean dtype")
-    adata.strings_to_categoricals()
-    filter_columns = [adata.obs[col] for col in filter_columns]
+    else:
+        for col in filter_columns:
+            if adata.obs[col].dtype != bool:
+                raise TypeError(f"filter_column '{col}' must have a boolean dtype")
+    filters = [adata.obs[col] for col in filter_columns]
 
-    falsecode_filter = ~(adata.obs["nCount_falsecode"] >= falsecode_max)
-    filter_columns.append(falsecode_filter)
-    negprobe_filter = ~(adata.obs["nCount_negprobes"] >= negprobe_max)
-    filter_columns.append(negprobe_filter)
+    falsecode_filter = adata.obs["nCount_falsecode"] <= falsecode_max
+    filters.append(falsecode_filter)
+    negprobe_filter = adata.obs["nCount_negprobes"] <= negprobe_max
+    filters.append(negprobe_filter)
     transcript_filter = adata.obs["nCount_RNA"].between(
         ntranscript_min, ntranscript_max
     )
-    filter_columns.append(transcript_filter)
+    filters.append(transcript_filter)
     area_filter = adata.obs["Area.um2"].between(area_min, area_max)
-    filter_columns.append(area_filter)
+    filters.append(area_filter)
     if filter_internalqc:
         internal_qc = adata.obs["qcCellsPassed"] & (adata.obs["qcFlagsFOV"] == "Pass")
-        filter_columns.append(internal_qc)
+        filters.append(internal_qc)
 
     # combine all filters
-    total_cell_filter = functools.reduce(operator.and_, filter_columns)
+    total_cell_filter = functools.reduce(operator.and_, filters)
 
     before = len(adata.obs)
     adata = adata[total_cell_filter, :].copy()

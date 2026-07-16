@@ -13,9 +13,7 @@ from ._qc import plot_value_distribution as value_distribution
 from ._qc import plot_violin as violin
 from ._tools.geosketch import plot_sketch as sketch
 from ._tools.pydeseq2 import plot_pydeseq2_volcano as pydeseq2_volcano
-from ._tools.statsmodels import (
-    plot_paired_binomial_glm_volcano as paired_binomial_glm_volcano,
-)
+from ._tools.statsmodels import plot_binomial_glm_volcano as binomial_glm_volcano
 
 __all__ = [
     "slide_qc",
@@ -30,6 +28,6 @@ __all__ = [
     "dim_red",
     "sketch",
     "pydeseq2_volcano",
-    "paired_binomial_glm_volcano",
+    "binomial_glm_volcano",
     "dim_red_cell_values",
 ]

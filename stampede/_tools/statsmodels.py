@@ -13,7 +13,7 @@ from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 
 
-def paired_binomial_glm(
+def binomial_glm(
     df: pd.DataFrame,
     adata: ad.AnnData,
     column: str,
@@ -24,8 +24,10 @@ def paired_binomial_glm(
     random_state: int = 42,
 ) -> pd.DataFrame | None:
     """
-    Runs paired sample-level binomial GLM:
+    Runs a binomial GLM on gene detection rates per group:
         gene_detection_rate ~ condition + covariate(s)
+
+    To perform a paired GLM, add the samples column to covariate_columns.
 
     Args:
         df: dataframe with detection rates per gene per sample
@@ -35,7 +37,7 @@ def paired_binomial_glm(
         test_condition: the condition to compare (e.g., "treated")
         reference_condition: the baseline condition (e.g., "control")
         condition_column: column with the conditions
-        covariate_columns: column(s) with covariates (e.g. "batch")
+        covariate_columns: column(s) with covariates (e.g. "batch" or "samples")
         random_state: random seed value
 
     Returns:
@@ -83,7 +85,7 @@ def paired_binomial_glm(
         df[col] = df[column].map(sample2covariate)
 
     # convert all metadata columns to categorical
-    string_cols = df.select_dtypes(include="object").columns
+    string_cols = df.select_dtypes(include=["object", "string"]).columns
     df[string_cols] = df[string_cols].astype("category")
 
     # drop all samples/conditions not in the contrast
@@ -104,18 +106,17 @@ def paired_binomial_glm(
 
     def fit_one_gene(gene_df):
         perfect_sep = False
+        model = smf.glm(
+            formula=design_formula,
+            data=gene_df,
+            family=sm.families.Binomial(),
+            var_weights=gene_df["ncells"],
+        )
         try:
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always", PerfectSeparationWarning)
 
-                model = smf.glm(
-                    formula=design_formula,
-                    data=gene_df,
-                    family=sm.families.Binomial(),
-                    var_weights=gene_df["ncells"],
-                )
                 result = model.fit()
-
                 for warn in w:
                     if issubclass(warn.category, PerfectSeparationWarning):
                         perfect_sep = True
@@ -183,7 +184,7 @@ def paired_binomial_glm(
     return results
 
 
-def plot_paired_binomial_glm_volcano(
+def plot_binomial_glm_volcano(
     df: pd.DataFrame,
     symbol_column: str = "index",
     or_column: str = "odds_ratio",

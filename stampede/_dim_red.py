@@ -61,7 +61,9 @@ def dim_red(
         min_count_allgenes = adata.obs["nFeature_RNA_postfilter"].min()
         if min_count < min_count_allgenes:
             warnings.warn(
-                f"Due to subsetting on {use_genes}, the lowest number of counts in a cell is {min_count} transcripts. ({min_count_allgenes} transcripts before subsetting). Consider if you need to refilter cells based on the total count within the {use_genes} mask\n\n"
+                f"Due to subsetting on {use_genes}, the lowest number of counts in a cell is {min_count} transcripts. "
+                f"({min_count_allgenes} transcripts before subsetting). "
+                f"Consider if you need to refilter cells based on the total count within the {use_genes} mask.\n",
             )
 
     prefix, uns_key = key_added.split("_", 1)

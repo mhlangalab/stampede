@@ -311,7 +311,7 @@ def lasso_clustering(
         def handler(_):
             idx = state["indices"]
             adata.obs.loc[adata.obs_names[idx], key_added] = digit
-            bdata.obs[key_added] = adata.obs.loc[state['idx_right']][key_added]
+            bdata.obs[key_added] = adata.obs.loc[state["idx_right"]][key_added]
             ax_left.set_title(f"{color} | labeled {len(idx)} cells cluster {digit}")
             redraw_right()
 

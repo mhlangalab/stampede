@@ -64,6 +64,7 @@ autodoc_mock_imports = [
     "scipy",
     "seaborn",
     "geosketch",
+    "ipympl",
     "ipython",
     "ipywidgets",
     "pydeseq2",

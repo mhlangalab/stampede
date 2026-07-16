@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os.path
+import warnings
 
 import anndata as ad
 import numpy as np
@@ -28,7 +29,7 @@ def binarize(adata: ad.AnnData, verbose: bool = True) -> None:
         X = adata.layers["counts"].copy()
         X.data = np.ones_like(X.data, dtype=np.float32)  # set all nonzero entries to 1
         X.eliminate_zeros()  # just to be sure
-        adata.layers["binary"] = X.copy()
+        adata.layers["binary"] = X
     elif verbose:
         print("binary layer already set")
 
@@ -47,9 +48,6 @@ def knn_count_smoothing(
 ) -> None:
     """
     For each cell, replace its gene vector with the average of its KNN neighborhood.
-
-    Runs sc.pp.neighbors if it has not run.
-    See https://scanpy.readthedocs.io/en/stable/api/generated/scanpy.pp.neighbors.html
 
     Args:
         adata: adata object
@@ -136,11 +134,10 @@ def combine_obs_columns(
 def pseudobulk(
     adata: ad.AnnData,
     column: str,
-    layer: str = "binary",
+    layer: str = "counts",
 ) -> pd.DataFrame:
     """
-    Generate a pseudobulk table (genes x samples) for all samples in the sample_column
-    and the cluster in the cluster_column, if specified.
+    Generate a pseudobulk table (genes x groups) for all groups in the column.
 
     Args:
         adata: adata object
@@ -148,7 +145,7 @@ def pseudobulk(
         layer: name of the adata layer to aggregate
 
     Returns:
-        a dataframe with summed layer values per sample
+        a dataframe with summed values per group
     """
     sample2counts = {}
     for sample in adata.obs[column].unique():
@@ -157,7 +154,7 @@ def pseudobulk(
 
     pseudobulk_df = pd.DataFrame(data=sample2counts, index=adata.var_names)
     # convert to integers if there are no decimal values
-    if (pseudobulk_df == np.floor(pseudobulk_df)).any().any():
+    if (pseudobulk_df == np.floor(pseudobulk_df)).all().all():
         pseudobulk_df = pseudobulk_df.astype(int)
     return pseudobulk_df
 
@@ -166,7 +163,7 @@ def detection_rates(
     adata: ad.AnnData, column: str, normalize: bool = True
 ) -> pd.DataFrame:
     """
-    Calculate gene detection rates per group in the specified column of adata.obs.
+    Calculate a gene detection rate table (genes x groups) for all groups in the column.
 
     Args:
         adata: adata object
@@ -174,17 +171,23 @@ def detection_rates(
         normalize: normalize detection rates for sample quality
 
     Returns:
-        a dataframe with normalized gene detection rates
+        a dataframe with normalized gene detection rates per group
     """
     # gene detection rate per sample
     columns = []
     det_rate_cols = []
-    for sample, ncells in adata.obs[column].value_counts().items():
+    samples2ncells = adata.obs[column].value_counts()
+    thresh = samples2ncells.mean() - 2 * samples2ncells.std()
+    for sample, ncells in samples2ncells.items():
         columns.append(sample)
         det_rates = (
             adata[adata.obs[column] == sample].layers["binary"].sum(axis=0).A / ncells
         )
         det_rate_cols.append(det_rates[0, :])
+        if ncells < thresh:
+            warnings.warn(
+                f"Low cell count for sample {sample} (n={ncells:,})! You may wish to filter your samples."
+            )
     det_rate_df = pd.DataFrame(det_rate_cols, index=columns, columns=adata.var_names).T
 
     # normalize detection rates for sample quality
@@ -199,13 +202,13 @@ def detection_rates(
         logit_dm_masked[zero_mask] = np.nan
 
         sample_medians = np.nanmedian(logit_dm_masked, axis=0)
-        worst = sample_medians.min()
+        worst = np.nanmin(sample_medians)
         shifts = sample_medians - worst
 
         logit_corrected = logit_dm.copy()
-        for i, s in enumerate(shifts):
+        for i, shift in enumerate(shifts):
             col_mask = ~zero_mask[:, i]  # noqa
-            logit_corrected[col_mask, i] -= s
+            logit_corrected[col_mask, i] -= shift
 
         normalized = 1 / (1 + np.exp(-logit_corrected))
         normalized[zero_mask] = 0
@@ -240,7 +243,7 @@ def annotate_genelist(
     if isinstance(genes, str):
         # If colname isn't given, create the column name from the genes file
         if not colname:
-            fname = os.path.basename(genes).replace(".gz", "").rsplit(".", 1)[0]
+            fname = os.path.basename(genes).rsplit(".", 1)[0]
             colname = f"is_{fname}"
 
         # Read in genes from textfile
@@ -254,6 +257,6 @@ def annotate_genelist(
         geneset = genes
 
     # Check for all genes in adata if they are present
-    adata.var[colname] = adata.var_names.isin(geneset)
+    adata.var[colname] = adata.var_names.isin(set(geneset))
 
     return None

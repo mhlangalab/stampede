@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import os
+import warnings
 from collections.abc import Iterable, Sequence
 
 import anndata as ad
@@ -96,7 +97,7 @@ def slide_qc(
         adata.obs.groupby("slide-fov", observed=False)["Area.um2"].sum()
         / fov_df["nCell"]
     )
-    if "Failed_AtoMX_QC" in adata.obs:
+    if "qcFlagsFOV" in adata.obs:
         slidefov2passfail = (
             adata.obs.groupby("slide-fov", observed=False)["qcFlagsFOV"]
             .first()
@@ -111,9 +112,11 @@ def slide_qc(
         )
     for col in add_cols:
         # Take most-occurring value in col per slide-fov:
-        fov_df[col] = adata.obs.groupby("slide-fov", observed=False)[col].agg(
+        s = adata.obs.groupby("slide-fov", observed=False)[col].agg(
             lambda val: val.mode()[0]
         )
+        s.name = col
+        fov_df = fov_df.merge(s, how="left", left_on="slide-fov", right_on="slide-fov")
 
     adata.uns["fov_metadata"] = fov_df
 
@@ -156,8 +159,9 @@ def gene_qc(
 
     Args:
         adata: an adata object
-        noise_threshold: manually specify the mimimum mean_Transcript threshold.
+        noise_threshold: manually specify the minimum mean_Transcript threshold.
          If None, use the filter specified above.
+         If specified, always overwrite this column.
         mult: if noise_threshold is None, mult is used in the noise
          threshold computation specified above.
         overwrite: overwrite existing qc columns
@@ -171,13 +175,13 @@ def gene_qc(
         adata.var["is_sysctrl"] = adata.var_names.str.startswith("System")
     if "nCell" not in adata.var.columns or overwrite:
         # number of nonzero cells per gene
-        adata.var["nCell"] = (adata.X > 0).sum(axis=0).A1
-        adata.var["pctCell"] = 100 * adata.var["nCell"] / adata.n_obs
+        adata.var["nCell"] = adata.X.count_nonzero(axis=0)
+        adata.var["pctCell"] = (100 * adata.var["nCell"] / adata.n_obs).round(2)
     if "nTranscript" not in adata.var.columns or overwrite:
         adata.var["nTranscript"] = np.array(adata.X.sum(axis=0)).ravel()
     if "mean_Transcript" not in adata.var.columns or overwrite:
         adata.var["mean_Transcript"] = adata.var["nTranscript"] / adata.n_obs
-    if "above_noise" not in adata.var.columns or overwrite:
+    if "above_noise" not in adata.var.columns or noise_threshold or overwrite:
         if noise_threshold is None:
             negctrls = adata.var.loc[adata.var["is_negctrl"], "mean_Transcript"]
             mean = negctrls.mean()
@@ -243,7 +247,7 @@ def gene_qc_postfilter(adata: ad.AnnData) -> None:
     ).round(2)
 
     if adata.var["nCell"].eq(adata.var["nCell_postfilter"]).all():
-        raise ValueError("adata was not filtered")
+        warnings.warn("adata was not filtered")
 
 
 def cell_qc_postfilter(adata: ad.AnnData) -> None:
@@ -261,7 +265,7 @@ def cell_qc_postfilter(adata: ad.AnnData) -> None:
     adata.obs["nCount_RNA_postfilter"] = adata.X.sum(axis=1)
 
     if adata.obs["nCount_RNA"].eq(adata.obs["nCount_RNA_postfilter"]).all():
-        raise ValueError("adata was not filtered")
+        warnings.warn("adata was not filtered")
 
 
 def _fov_dimensions(fov_df):

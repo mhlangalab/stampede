@@ -43,8 +43,8 @@ def pydeseq2(
         column: column in adata.obs with groups to compare
         test_condition: the condition to compare (e.g., "treated")
         reference_condition: the baseline condition (e.g., "control")
-        condition_column: column with the conditions
-        covariate_columns: column(s) with covariates (e.g. "batch")
+        condition_column: column in adata.obs with the conditions
+        covariate_columns: column(s) in adata.obs with covariates (e.g. "batch")
         inference: pyDESeq2 inference class instance
         n_cpus: number of threads to use
         return_objects: return the DeseqDataSet, DeseqStats and the results_df.
