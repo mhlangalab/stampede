@@ -67,10 +67,20 @@ def pydeseq2(
     if ds_kwargs is None:
         ds_kwargs = {}
 
+    # add all covariate columns
     if covariate_columns is None:
         covariate_columns = []
     elif isinstance(covariate_columns, str):
         covariate_columns = [covariate_columns]
+    # check for contrast design operators in the column names
+    blacklist = ["~", "-", "+", "*", "/", ":", " "]
+    for col in [condition_column] + covariate_columns:
+        for symbol in blacklist:
+            if symbol in col:
+                raise NameError(
+                    f"Invalid symbol '{symbol}' in column name '{col}'! "
+                    "All invalid symbols: '" + "".join(blacklist) + "'"
+                )
     metadata = (
         adata.obs[[column, condition_column] + covariate_columns]
         .drop_duplicates(ignore_index=True)

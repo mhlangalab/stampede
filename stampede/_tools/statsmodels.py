@@ -27,7 +27,8 @@ def binomial_glm(
     Runs a binomial GLM on gene detection rates per group:
         gene_detection_rate ~ condition + covariate(s)
 
-    To perform a paired GLM, add the samples column to covariate_columns.
+    To perform a paired GLM, add the replicate/donor column to covariate_columns.
+    For a paired GLM, ensure this pairing column is not numerical, but of string/categorical dtype.
 
     Args:
         df: dataframe with detection rates per gene per sample
@@ -78,6 +79,15 @@ def binomial_glm(
         covariate_columns = []
     elif isinstance(covariate_columns, str):
         covariate_columns = [covariate_columns]
+    # check for contrast design operators in the column names
+    blacklist = ["~", "-", "+", "*", "/", ":", " "]
+    for col in [condition_column] + covariate_columns:
+        for symbol in blacklist:
+            if symbol in col:
+                raise NameError(
+                    f"Invalid symbol '{symbol}' in column name '{col}'! "
+                    "All invalid symbols: '" + "".join(blacklist) + "'"
+                )
     for col in covariate_columns:
         sample2covariate = (
             adata.obs[[column, col]].set_index(column)[col].astype(str).to_dict()
