@@ -228,6 +228,7 @@ def plot_pydeseq2_volcano(
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
     text_kwargs: dict = None,
+    adjust_text_kwargs: dict = None,
 ) -> tuple[Figure, Axes]:
     """
     Generate a volcano plot from a pyDESeq2 results dataframe.
@@ -248,6 +249,7 @@ def plot_pydeseq2_volcano(
         subplot_kwargs: kwargs passed to plt.subplots
         plot_kwargs: kwargs passed to the main plotting function
         text_kwargs: kwargs passed to ax.text
+        adjust_text_kwargs: kwargs passed to adjust_text
 
     Returns:
         matplotlib figure and axis object
@@ -388,6 +390,11 @@ def plot_pydeseq2_volcano(
             )
             txt.set_path_effects([patheffects.withStroke(linewidth=3, foreground="w")])
             texts.append(txt)
-        adjust_text(texts, arrowprops=dict(arrowstyle="-", color="k", zorder=5), ax=ax)
+        adjust_text(
+            texts,
+            arrowprops=dict(arrowstyle="-", color="k", zorder=5),
+            ax=ax,
+            **adjust_text_kwargs,
+        )
 
     return fig, ax
