@@ -41,7 +41,7 @@ def dim_red(
     if use_genes is None:
         adata_sub = adata
     else:
-        if not use_genes in adata.var.columns:
+        if use_genes not in adata.var.columns:
             raise KeyError(
                 f"{use_genes} not found in adata.var.columns. "
                 "Use an existing column name for use_genes"
@@ -104,9 +104,10 @@ def dim_red(
     # Drop 1st dimension, is not informative (like scATAC; this case expl var 200-fold lower than 2nd dim)
     adata.obsm[key_added] = svd.fit_transform(X_tfidf)[:, 1:]
     adata.uns[uns_key] = {
-        "idf": idf,
+        "inverse_document_frequency": idf,
         "explained_variance_ratio": svd.explained_variance_ratio_[1:],
         "components": svd.components_[1:],
+        "col_names": [f"LSI_{i + 1}" for i in range(n_dims)],
     }
     if use_genes is not None:
         adata.uns[uns_key]["var_names"] = adata_sub.var_names.to_list()
@@ -303,8 +304,8 @@ def plot_dim_red_cell_values(
         If show=True, returns None and shows the figures.
          If show=False, returns the output of sc.pl.embedding(..., show=False).
     """
-
-    cols = [f"LSI_{i+1}" for i in range(n_dims)]
+    uns_key = latent_key.split("_", 1)[1]
+    cols = adata.uns[uns_key]["col_names"][:n_dims]
     for i, col in enumerate(cols):
         adata.obs[col] = adata.obsm[latent_key][:, i]
 
@@ -317,3 +318,49 @@ def plot_dim_red_cell_values(
         return None
     else:
         return plots
+
+
+def dim_red_filter(adata: ad.AnnData, key_added: str, col_names: str | list, latent_key: str = "X_svd"):
+    """
+    Make a copy of a dimensionality reduction and remove one or more dimensions.
+
+    Dimensions are named in adata.uns["svd"]["col_names"],
+    and can be visualized using st.pl.dim_red_cell_values()
+
+    Args:
+        adata: adata object
+        key_added: key in adata.obsm for function output
+        col_names: dimensions to remove (by name)
+        latent_key: key in adata.obsm for function input
+
+    Returns:
+        Nothing, updates adata.obsm and adata.uns
+    """
+    if isinstance(col_names, str):
+        col_names = [col_names]
+
+    prefix, uns_key = latent_key.split("_", 1)
+    if prefix != "X" or len(uns_key) == 0:
+        raise ValueError(f"{latent_key=} must start with 'X_', e.g. 'X_svd'")
+    prefix, uns_key_added = key_added.split("_", 1)
+    if prefix != "X" or len(uns_key) == 0:
+        raise ValueError(f"{key_added=} must start with 'X_', e.g. 'X_svd'")
+    for col in col_names:
+        if col not in adata.uns[uns_key]["col_names"]:
+            raise ValueError(
+                f"col_name {col} not found in adata.uns['{uns_key}']['col_names']!"
+            )
+
+    # copy the original dimensionality reduction
+    adata.obsm[key_added] = adata.obsm[latent_key].copy()
+    adata.uns[uns_key_added] = adata.uns[uns_key].copy()
+
+    # remove specified dimensions one at a time
+    # (not optimized, but these are only small arrays)
+    uns = adata.uns[uns_key_added]
+    for col in col_names:
+        idx = uns["col_names"].index(col)
+        uns['components'] = np.delete(uns['components'], idx, axis=0)
+        uns['explained_variance_ratio'] = np.delete(uns['explained_variance_ratio'], idx)
+        uns["col_names"].remove(col)
+        adata.obsm[key_added] = np.delete(adata.obsm[key_added], idx, axis=1)
