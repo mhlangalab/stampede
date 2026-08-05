@@ -225,6 +225,7 @@ def plot_pydeseq2_volcano(
     pval_thresh: float = 0.05,
     log2fc_thresh: float = 0.75,
     to_label: int | list | None = 5,
+    crop: bool = True,
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
     text_kwargs: dict = None,
@@ -246,6 +247,7 @@ def plot_pydeseq2_volcano(
          considered significant
         to_label: If an int is passed, that number of top down and up genes will be labeled.
             If a list of gene Ids is passed, only those will be labeled
+        crop: crop out insignificant genes with high odds ratios
         subplot_kwargs: kwargs passed to plt.subplots
         plot_kwargs: kwargs passed to the main plotting function
         text_kwargs: kwargs passed to ax.text
@@ -260,9 +262,21 @@ def plot_pydeseq2_volcano(
         plot_kwargs = {}
     if text_kwargs is None:
         text_kwargs = {}
+    if adjust_text_kwargs is None:
+        adjust_text_kwargs = {}
     alpha = 0.33
 
     df = df.copy().reset_index(drop=False).dropna()
+
+    # remove insignificant genes with very high log2FC to shrink the x limits.
+    # this method works with adjust_text(), unlike ax.set_xlim()
+    significant = df[df[pvalue_column] < pval_thresh]
+    if crop and len(significant) > 0:
+        mx = significant[log2fc_column].max()
+        mn = significant[log2fc_column].min()
+        pad = abs(mx - mn) * 0.25
+        df = df[df[log2fc_column].between(mn - pad, mx + pad)]
+
     pval_thresh = -np.log10(pval_thresh)
     min_value = min(1e-9, df[df[pvalue_column] > 0][pvalue_column].min() / 10)
     df["-log10(padj)"] = -np.log10(np.clip(df[pvalue_column], min_value, None))

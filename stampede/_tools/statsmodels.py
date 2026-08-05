@@ -204,6 +204,7 @@ def plot_binomial_glm_volcano(
     l2or_thresh: float = 0.75,
     to_label: int | list | None = 5,
     drop_perfect_separation: bool = True,
+    crop: bool = True,
     subplot_kwargs: dict = None,
     plot_kwargs: dict = None,
     text_kwargs: dict = None,
@@ -222,6 +223,7 @@ def plot_binomial_glm_volcano(
         l2or_thresh: threshold for the log2 odds ratios to be considered significant
         to_label: the number of top genes (down and up each) to be labeled
         drop_perfect_separation: whether to drop the genes with perfect separations
+        crop: crop out insignificant genes with high odds ratios
         subplot_kwargs: kwargs passed to plt.subplots
         plot_kwargs: kwargs passed to the main plotting function
         text_kwargs: kwargs passed to ax.text
@@ -239,14 +241,23 @@ def plot_binomial_glm_volcano(
     if adjust_text_kwargs is None:
         adjust_text_kwargs = {}
     alpha = 0.33
-    pval_thresh = -np.log10(pval_thresh)
 
+    df = df.copy().dropna(subset=[pvalue_column, or_column, separation_column])
     if symbol_column == "index":
         if df.index.name:
             symbol_column = df.index.name
-        df = df.reset_index(drop=False)
+        df.reset_index(drop=False, inplace=True)
 
-    df = df.dropna(subset=[pvalue_column, or_column, separation_column])
+    # remove insignificant genes with very high odds ratios to shrink the x limits.
+    # this method works with adjust_text(), unlike ax.set_xlim()
+    significant = df[df[pvalue_column] < pval_thresh]
+    if crop and len(significant) > 0:
+        mx = significant["log2(odds_ratio)"].max()
+        mn = significant["log2(odds_ratio)"].min()
+        pad = abs(mx - mn) * 0.25
+        df = df[df["log2(odds_ratio)"].between(mn - pad, mx + pad)]
+
+    pval_thresh = -np.log10(pval_thresh)
     if drop_perfect_separation:
         df = df.loc[~df[separation_column]]
     min_value = min(1e-9, df[df[pvalue_column] > 0][pvalue_column].min() / 10)
