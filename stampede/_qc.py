@@ -169,16 +169,21 @@ def gene_qc(
     Returns:
         Nothing, updates adata.var
     """
+    if "counts" in adata.layers:
+        X = adata.layers["counts"]
+    else:
+        X = adata.X
+
     if "is_negctrl" not in adata.var.columns or overwrite:
         adata.var["is_negctrl"] = adata.var_names.str.startswith("Negative")
     if "is_sysctrl" not in adata.var.columns or overwrite:
         adata.var["is_sysctrl"] = adata.var_names.str.startswith("System")
     if "nCell" not in adata.var.columns or overwrite:
         # number of nonzero cells per gene
-        adata.var["nCell"] = adata.X.count_nonzero(axis=0)
+        adata.var["nCell"] = X.count_nonzero(axis=0)
         adata.var["pctCell"] = (100 * adata.var["nCell"] / adata.n_obs).round(2)
     if "nTranscript" not in adata.var.columns or overwrite:
-        adata.var["nTranscript"] = np.array(adata.X.sum(axis=0)).ravel()
+        adata.var["nTranscript"] = np.array(X.sum(axis=0)).ravel()
     if "mean_Transcript" not in adata.var.columns or overwrite:
         adata.var["mean_Transcript"] = adata.var["nTranscript"] / adata.n_obs
     if "above_noise" not in adata.var.columns or noise_threshold or overwrite:
@@ -240,8 +245,12 @@ def gene_qc_postfilter(adata: ad.AnnData) -> None:
     Returns:
         Nothing, updates adata.var
     """
+    if "counts" in adata.layers:
+        X = adata.layers["counts"]
+    else:
+        X = adata.X
 
-    adata.var["nCell_postfilter"] = adata.X.count_nonzero(axis=0)
+    adata.var["nCell_postfilter"] = X.count_nonzero(axis=0)
     adata.var["pctCell_postfilter"] = (
         100 * adata.var["nCell_postfilter"] / adata.n_obs
     ).round(2)
@@ -260,9 +269,13 @@ def cell_qc_postfilter(adata: ad.AnnData) -> None:
     Returns:
         Nothing, updates adata.obs
     """
+    if "counts" in adata.layers:
+        X = adata.layers["counts"]
+    else:
+        X = adata.X
 
-    adata.obs["nFeature_RNA_postfilter"] = adata.X.count_nonzero(axis=1)
-    adata.obs["nCount_RNA_postfilter"] = adata.X.sum(axis=1)
+    adata.obs["nFeature_RNA_postfilter"] = X.count_nonzero(axis=1)
+    adata.obs["nCount_RNA_postfilter"] = X.sum(axis=1)
 
     if adata.obs["nCount_RNA"].eq(adata.obs["nCount_RNA_postfilter"]).all():
         warnings.warn("adata was not filtered")
