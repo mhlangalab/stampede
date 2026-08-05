@@ -320,7 +320,9 @@ def plot_dim_red_cell_values(
         return plots
 
 
-def dim_red_filter(adata: ad.AnnData, key_added: str, col_names: str | list, latent_key: str = "X_svd"):
+def dim_red_filter(
+    adata: ad.AnnData, key_added: str, col_names: str | list, latent_key: str = "X_svd"
+):
     """
     Make a copy of a dimensionality reduction and remove one or more dimensions.
 
@@ -360,7 +362,9 @@ def dim_red_filter(adata: ad.AnnData, key_added: str, col_names: str | list, lat
     uns = adata.uns[uns_key_added]
     for col in col_names:
         idx = uns["col_names"].index(col)
-        uns['components'] = np.delete(uns['components'], idx, axis=0)
-        uns['explained_variance_ratio'] = np.delete(uns['explained_variance_ratio'], idx)
+        uns["components"] = np.delete(uns["components"], idx, axis=0)
+        uns["explained_variance_ratio"] = np.delete(
+            uns["explained_variance_ratio"], idx
+        )
         uns["col_names"].remove(col)
         adata.obsm[key_added] = np.delete(adata.obsm[key_added], idx, axis=1)
