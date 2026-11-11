@@ -72,6 +72,17 @@ def pydeseq2(
         covariate_columns = []
     elif isinstance(covariate_columns, str):
         covariate_columns = [covariate_columns]
+
+    # sanity checks
+    for col in [column, condition_column] + covariate_columns:
+        if col not in adata.obs.columns:
+            raise ValueError(f"Column '{col}' not in adata.obs.columns!")
+    for cond in [test_condition, reference_condition]:
+        if cond not in adata.obs[condition_column].unique():
+            raise ValueError(
+                f"Condition '{cond}' not in adata.obs['{condition_column}']!"
+            )
+
     # check for contrast design operators in the column names
     blacklist = ["~", "-", "+", "*", "/", ":", " "]
     for col in [condition_column] + covariate_columns:
@@ -81,11 +92,45 @@ def pydeseq2(
                     f"Invalid symbol '{symbol}' in column name '{col}'! "
                     "All invalid symbols: '" + "".join(blacklist) + "'"
                 )
+
     metadata = (
         adata.obs[[column, condition_column] + covariate_columns]
         .drop_duplicates(ignore_index=True)
         .set_index(column)
     )
+    to_check = metadata[
+        metadata[condition_column].isin([test_condition, reference_condition])
+    ]
+
+    # check if the counts table has the columns we expect based on the metadata
+    names = to_check.index.unique().to_list()
+    missing = set(names) - set(counts.columns)
+    found = set(names) & set(counts.columns)
+    n = len(missing)
+    m = len(names)
+    if n > 0:
+        raise ValueError(
+            f"Missing {n} of {m} sample names in your counts table columns:\n"
+            f"  - Missing: {sorted(missing)}\n"
+            f"  - Found: {sorted(found)}\n"
+            "Note: search was filtered for test & reference condition only."
+        )
+
+    # check if the conditions & covariates are (probably) represented in the counts table
+    if len(to_check.index) > len(set(to_check.index)):
+        msg = (
+            "Not all combinations of conditions & covariates are present in the counts table!\n"
+            f"  - Expected number of columns in the counts table: {len(metadata.index)}.\n"
+            f"  - Observed number of columns in the counts table: {len(counts.columns)}.\n"
+        )
+        if covariate_columns:
+            msg += (
+                "Tip: If you used stampede.pp.combine_obs_columns() "
+                "to generate the counts table, make sure to add the covariate column(s) "
+                "to the columns list."
+            )
+        raise ValueError(msg)
+
     design_formula = "~ " + " + ".join([condition_column] + covariate_columns)
     # cannot capture the warnings due to multiprocessing
     with warnings.catch_warnings():
