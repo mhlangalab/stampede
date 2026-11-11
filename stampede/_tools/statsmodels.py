@@ -50,6 +50,32 @@ def binomial_glm(
     from statsmodels.stats.multitest import multipletests  # noqa
     from statsmodels.tools.sm_exceptions import PerfectSeparationWarning  # noqa
 
+    # add all covariate columns
+    if covariate_columns is None:
+        covariate_columns = []
+    elif isinstance(covariate_columns, str):
+        covariate_columns = [covariate_columns]
+
+    # sanity checks
+    for col in [column, condition_column] + covariate_columns:
+        if col not in adata.obs.columns:
+            raise ValueError(f"Column '{col}' not in adata.obs.columns!")
+    for cond in [test_condition, reference_condition]:
+        if cond not in adata.obs[condition_column].unique():
+            raise ValueError(
+                f"Condition '{cond}' not in adata.obs['{condition_column}']!"
+            )
+
+    # check for contrast design operators in the column names
+    blacklist = ["~", "-", "+", "*", "/", ":", " "]
+    for col in [condition_column] + covariate_columns:
+        for symbol in blacklist:
+            if symbol in col:
+                raise NameError(
+                    f"Invalid symbol '{symbol}' in column name '{col}'! "
+                    "All invalid symbols: '" + "".join(blacklist) + "'"
+                )
+
     df = df.stack().reset_index()
     df.columns = ["gene", column, "detection_rate"]
     df[column] = df[column].astype(str)
@@ -63,31 +89,10 @@ def binomial_glm(
     )
     df[condition_column] = df[column].map(sample2condition)
 
-    # sanity check
-    unique_conditions = df[condition_column].unique()
-    if reference_condition not in unique_conditions:
-        raise ValueError(f"{reference_condition=} not found in dataframe:\n{df}")
-    if test_condition not in unique_conditions:
-        raise ValueError(f"{test_condition=} not found in dataframe:\n{df}")
-
     # add the number of cells per sample
     sample2ncells = adata.obs[column].value_counts().astype(str).to_dict()
     df["ncells"] = df[column].replace(sample2ncells).astype(int)
 
-    # add all covariate columns
-    if covariate_columns is None:
-        covariate_columns = []
-    elif isinstance(covariate_columns, str):
-        covariate_columns = [covariate_columns]
-    # check for contrast design operators in the column names
-    blacklist = ["~", "-", "+", "*", "/", ":", " "]
-    for col in [condition_column] + covariate_columns:
-        for symbol in blacklist:
-            if symbol in col:
-                raise NameError(
-                    f"Invalid symbol '{symbol}' in column name '{col}'! "
-                    "All invalid symbols: '" + "".join(blacklist) + "'"
-                )
     for col in covariate_columns:
         sample2covariate = (
             adata.obs[[column, col]].set_index(column)[col].astype(str).to_dict()
